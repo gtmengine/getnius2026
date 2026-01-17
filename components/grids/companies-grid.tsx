@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { ColDef } from 'ag-grid-community';
 import { AgGridWrapper } from '@/components/ui/ag-grid-wrapper';
+import { selectCol } from '@/lib/grid-columns';
 
 interface CompaniesGridProps {
   onRowSelect: (company: any) => void;
@@ -277,6 +278,7 @@ const sampleCompanies = [
 
 export function CompaniesGrid({ onRowSelect }: CompaniesGridProps) {
   const columnDefs = useMemo<ColDef[]>(() => [
+    selectCol(),
     {
       field: 'name',
       headerName: 'Company',

@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { ColDef } from 'ag-grid-community';
 import { AgGridWrapper } from '@/components/ui/ag-grid-wrapper';
+import { selectCol } from '@/lib/grid-columns';
 
 interface PatentsGridProps {
   onRowSelect: (patent: any) => void;
@@ -43,6 +44,7 @@ const samplePatents = [
 
 export function PatentsGrid({ onRowSelect }: PatentsGridProps) {
   const columnDefs = useMemo<ColDef[]>(() => [
+    selectCol(),
     {
       field: 'title',
       headerName: 'Title',

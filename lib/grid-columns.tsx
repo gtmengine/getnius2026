@@ -3,6 +3,19 @@ import { ColDef } from 'ag-grid-community';
 
 export type TabId = 'companies' | 'people' | 'news' | 'signals' | 'market' | 'patents' | 'research-papers';
 
+export const selectCol = (): ColDef => ({
+  headerName: '',
+  colId: 'select',
+  pinned: 'left',
+  lockPinned: true,
+  suppressMovable: true,
+  checkboxSelection: true,
+  headerCheckboxSelection: true,
+  width: 46,
+  sortable: false,
+  filter: false,
+});
+
 // Editable Header Component for AG Grid
 const EditableHeaderComponent = (props: any) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -224,6 +237,7 @@ const MatchStatusRenderer = (params: any) => {
 
 // Column definitions for Companies tab
 export const companiesColumnDefs: ColDef[] = [
+  selectCol(),
   {
     field: 'name',
     headerName: 'Company',
@@ -298,6 +312,7 @@ export const companiesColumnDefs: ColDef[] = [
 
 // Column definitions for People tab
 export const peopleColumnDefs: ColDef[] = [
+  selectCol(),
   {
     field: 'name',
     headerName: 'Name',
@@ -360,18 +375,7 @@ export const peopleColumnDefs: ColDef[] = [
 
 // Column definitions for News tab
 export const newsColumnDefs: ColDef[] = [
-  {
-    field: 'selection',
-    headerName: 'Select',
-    width: 80,
-    checkboxSelection: true,
-    headerCheckboxSelection: true,
-    pinned: 'left',
-    suppressMenu: true,
-    suppressSorting: true,
-    suppressFilter: true,
-    cellStyle: { textAlign: 'center' },
-  },
+  selectCol(),
   {
     field: 'title',
     headerName: 'Title',
@@ -442,6 +446,7 @@ export const newsColumnDefs: ColDef[] = [
 
 // Column definitions for Signals tab
 export const signalsColumnDefs: ColDef[] = [
+  selectCol(),
   {
     field: 'signalType',
     headerName: 'Signal Type',
@@ -504,6 +509,7 @@ export const signalsColumnDefs: ColDef[] = [
 
 // Column definitions for Market Reports tab
 export const marketColumnDefs: ColDef[] = [
+  selectCol(),
   {
     field: 'title',
     headerName: 'Report Title',
@@ -560,6 +566,7 @@ export const marketColumnDefs: ColDef[] = [
 
 // Column definitions for Patents tab
 export const patentsColumnDefs: ColDef[] = [
+  selectCol(),
   {
     field: 'title',
     headerName: 'Title',
@@ -620,6 +627,7 @@ export const patentsColumnDefs: ColDef[] = [
 
 // Column definitions for Research Papers tab
 export const researchPapersColumnDefs: ColDef[] = [
+  selectCol(),
   {
     field: 'title',
     headerName: 'Title',
@@ -705,4 +713,3 @@ export const tabConfigs: TabConfig[] = [
   { id: 'patents', label: 'Patents', icon: 'file-text' },
   { id: 'research-papers', label: 'Research Papers', icon: 'book-open' },
 ];
-

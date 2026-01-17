@@ -609,7 +609,6 @@ function ResultsPanel({
           onColumnHeaderDoubleClick={onColumnHeaderDoubleClick}
           emptyMessage={`No ${activeTab} data available.`}
           rowSelection="multiple"
-          checkboxSelection={activeTab !== 'news'} // Disable general checkbox for news tab since it has a dedicated column
           getRowClass={getRowClass}
         />
       </div>
