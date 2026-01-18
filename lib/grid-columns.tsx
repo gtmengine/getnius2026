@@ -697,6 +697,22 @@ export const columnDefsMap: Record<TabId, ColDef[]> = {
   'research-papers': researchPapersColumnDefs,
 };
 
+const isExportableColumn = (colDef: ColDef) =>
+  Boolean(colDef.field) && colDef.colId !== 'select' && colDef.field !== 'actions';
+
+export const getExportColumnsForTab = (tab: TabId, customColumns: ColDef[] = []) => {
+  const columns = [...(columnDefsMap[tab] || []), ...customColumns];
+  const uniqueFields = new Set<string>();
+
+  columns.forEach((colDef) => {
+    if (isExportableColumn(colDef) && colDef.field) {
+      uniqueFields.add(colDef.field);
+    }
+  });
+
+  return Array.from(uniqueFields);
+};
+
 // Tab configuration
 export interface TabConfig {
   id: TabId;

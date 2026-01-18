@@ -24,10 +24,11 @@ import {
   Plus
 } from 'lucide-react';
 import { AgGridWrapper, AgGridWrapperRef } from '@/components/ui/ag-grid-wrapper';
-import { columnDefsMap, TabId, tabConfigs } from '@/lib/grid-columns';
+import { columnDefsMap, getExportColumnsForTab, TabId, tabConfigs } from '@/lib/grid-columns';
 import { sampleDataMap, getEmptyData } from '@/lib/sample-data';
 import { ColDef } from 'ag-grid-community';
 import { searchWithGoogle } from '@/lib/search-apis';
+import { downloadCSV, toCSV } from '@/lib/csv';
 
 // Icon map for tabs
 const iconMap = {
@@ -162,6 +163,7 @@ interface ResultsToolbarProps {
   onDelete: () => void;
   onAddColumn: () => void;
   onAddRow: () => void;
+  onExport: () => void;
   activeTab: TabId;
   significanceMin: number;
   relevanceMin: number;
@@ -178,6 +180,7 @@ function ResultsToolbar({
   onDelete,
   onAddColumn,
   onAddRow,
+  onExport,
   activeTab,
   significanceMin,
   relevanceMin,
@@ -304,7 +307,10 @@ function ResultsToolbar({
             {selectedCount} selected
           </span>
         )}
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-gray-100 text-gray-700 hover:bg-gray-200">
+        <button
+          onClick={onExport}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-gray-100 text-gray-700 hover:bg-gray-200"
+        >
           <Download className="w-3.5 h-3.5" />
           Export
         </button>
@@ -327,6 +333,7 @@ interface ResultsPanelProps {
   onAddRow: () => void;
   onMatch: () => void;
   onNotMatch: () => void;
+  onExport: () => void;
   customColumns: Record<TabId, ColDef[]>;
   onColumnHeaderDoubleClick: (columnField: string, currentName: string) => void;
   setResults: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>;
@@ -350,6 +357,7 @@ function ResultsPanel({
   onAddRow,
   onMatch,
   onNotMatch,
+  onExport,
   customColumns,
   onColumnHeaderDoubleClick,
   setResults,
@@ -588,6 +596,7 @@ function ResultsPanel({
           onDelete={handleDelete}
           onAddColumn={onAddColumn}
           onAddRow={onAddRow}
+          onExport={onExport}
           activeTab={activeTab}
           significanceMin={significanceMin}
           relevanceMin={relevanceMin}
@@ -809,6 +818,24 @@ export default function Page() {
   const handleRelevanceChange = useCallback((value: number) => {
     setRelevanceMin(value);
   }, []);
+
+  const handleExport = useCallback(() => {
+    const rows = filteredResults[activeTab] || [];
+    const exportColumns = getExportColumnsForTab(activeTab, customColumns[activeTab] || []);
+    const csv = toCSV(rows, exportColumns);
+
+    if (!csv) {
+      console.warn('No exportable columns found.');
+      return;
+    }
+
+    const tabLabel = tabConfigs.find((tab) => tab.id === activeTab)?.label || activeTab;
+    const tabSlug = tabLabel.toLowerCase().replace(/\s+/g, '-');
+    const dateStamp = new Date().toISOString().split('T')[0];
+    const filename = `getnius-${tabSlug}-${dateStamp}.csv`;
+
+    downloadCSV(filename, csv);
+  }, [activeTab, customColumns, filteredResults]);
 
   // Column name change handler (for custom columns)
   const handleColumnNameChange = useCallback((tab: TabId, fieldName: string, newName: string) => {
@@ -1368,6 +1395,7 @@ export default function Page() {
           onAddRow={() => handleAddRow(activeTab, setResults, customColumns)}
           onMatch={() => handleMatch(selectedRows, setResults, results, activeTab, setSelectedRows)}
           onNotMatch={() => handleNotMatch(selectedRows, setResults, results, activeTab, setSelectedRows)}
+          onExport={handleExport}
           customColumns={customColumns}
           onColumnHeaderDoubleClick={(columnField, currentName) => {
             // Only allow editing custom columns (those containing "Custom" in the name)
