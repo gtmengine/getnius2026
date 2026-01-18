@@ -41,7 +41,8 @@ export const sampleCompanies = [
     revenue: '$100M+',
     people: 8,
     news: 6,
-    logo: '/placeholder.svg'
+    logo: '/placeholder.svg',
+    matchStatus: 'match' as const
   },
   {
     id: '4',
@@ -54,7 +55,8 @@ export const sampleCompanies = [
     revenue: '$50M+',
     people: 5,
     news: 4,
-    logo: '/placeholder.svg'
+    logo: '/placeholder.svg',
+    matchStatus: 'not-match' as const
   },
   {
     id: '5',
@@ -67,7 +69,8 @@ export const sampleCompanies = [
     revenue: '$75M+',
     people: 10,
     news: 7,
-    logo: '/placeholder.svg'
+    logo: '/placeholder.svg',
+    matchStatus: 'match' as const
   },
   {
     id: '6',
@@ -80,7 +83,8 @@ export const sampleCompanies = [
     revenue: '$200M+',
     people: 15,
     news: 9,
-    logo: '/placeholder.svg'
+    logo: '/placeholder.svg',
+    matchStatus: 'match' as const
   },
   {
     id: '7',
@@ -93,7 +97,8 @@ export const sampleCompanies = [
     revenue: '$30M+',
     people: 6,
     news: 3,
-    logo: '/placeholder.svg'
+    logo: '/placeholder.svg',
+    matchStatus: 'not-match' as const
   },
   {
     id: '8',
@@ -106,7 +111,8 @@ export const sampleCompanies = [
     revenue: '$80M+',
     people: 12,
     news: 5,
-    logo: '/placeholder.svg'
+    logo: '/placeholder.svg',
+    matchStatus: 'match' as const
   },
 ];
 
@@ -114,36 +120,36 @@ export const sampleCompanies = [
 export const samplePeople = [
   { id: '1', name: 'Sarah Chen', company: 'TechFlow Solutions', role: 'CTO', location: 'San Francisco, CA', email: 'sarah.chen@techflow.com', intents: 4, matchStatus: 'match' as const },
   { id: '2', name: 'Marcus Johnson', company: 'TechFlow Solutions', role: 'VP Engineering', location: 'San Francisco, CA', email: 'marcus.johnson@techflow.com', intents: 2, matchStatus: 'not-match' as const },
-  { id: '3', name: 'Elena Rodriguez', company: 'DataDriven Inc', role: 'Chief Data Scientist', location: 'Austin, TX', email: 'elena.rodriguez@datadriven.com', intents: 5 },
-  { id: '4', name: 'Ahmed Hassan', company: 'Noon', role: 'VP Product', location: 'Dubai, UAE', email: 'ahmed.hassan@noon.com', intents: 3 },
-  { id: '5', name: 'Priya Sharma', company: 'Careem', role: 'Head of Engineering', location: 'Dubai, UAE', email: 'priya.sharma@careem.com', intents: 6 },
-  { id: '6', name: 'Mohammed Al-Rashid', company: 'Kitopi', role: 'CEO', location: 'Dubai, UAE', email: 'm.rashid@kitopi.com', intents: 8 },
-  { id: '7', name: 'Lisa Wang', company: 'Anghami', role: 'CPO', location: 'Beirut, Lebanon', email: 'lisa.wang@anghami.com', intents: 2 },
-  { id: '8', name: 'Omar Khaled', company: 'Swvl', role: 'COO', location: 'Cairo, Egypt', email: 'omar.khaled@swvl.com', intents: 4 },
+  { id: '3', name: 'Elena Rodriguez', company: 'DataDriven Inc', role: 'Chief Data Scientist', location: 'Austin, TX', email: 'elena.rodriguez@datadriven.com', intents: 5, matchStatus: 'match' as const },
+  { id: '4', name: 'Ahmed Hassan', company: 'Noon', role: 'VP Product', location: 'Dubai, UAE', email: 'ahmed.hassan@noon.com', intents: 3, matchStatus: 'match' as const },
+  { id: '5', name: 'Priya Sharma', company: 'Careem', role: 'Head of Engineering', location: 'Dubai, UAE', email: 'priya.sharma@careem.com', intents: 6, matchStatus: 'not-match' as const },
+  { id: '6', name: 'Mohammed Al-Rashid', company: 'Kitopi', role: 'CEO', location: 'Dubai, UAE', email: 'm.rashid@kitopi.com', intents: 8, matchStatus: 'match' as const },
+  { id: '7', name: 'Lisa Wang', company: 'Anghami', role: 'CPO', location: 'Beirut, Lebanon', email: 'lisa.wang@anghami.com', intents: 2, matchStatus: 'not-match' as const },
+  { id: '8', name: 'Omar Khaled', company: 'Swvl', role: 'COO', location: 'Cairo, Egypt', email: 'omar.khaled@swvl.com', intents: 4, matchStatus: 'match' as const },
 ];
 
 // Sample News Data
 export const sampleNews = [
   { id: '1', title: 'Noon Raises $500M in Series D Funding Round', source: 'TechCrunch', date: '2026-01-05', company: 'Noon', summary: 'E-commerce giant Noon secures massive funding to expand across MENA region with new fulfillment centers.', significance_score: 8.5, relevance_score: 9.2, matchStatus: 'match' as const },
-  { id: '2', title: 'Careem Launches Super App in Saudi Arabia', source: 'Bloomberg', date: '2026-01-04', company: 'Careem', summary: 'Uber-owned Careem expands its super app services to include food delivery and payments in KSA.', significance_score: 7.8, relevance_score: 8.7 },
-  { id: '3', title: 'Kitopi Opens 50 New Cloud Kitchens in UAE', source: 'Arabian Business', date: '2026-01-03', company: 'Kitopi', summary: 'Food-tech unicorn accelerates expansion with new cloud kitchen locations across Dubai and Abu Dhabi.', significance_score: 6.2, relevance_score: 7.1 },
-  { id: '4', title: 'Anghami Goes Public on NASDAQ', source: 'Reuters', date: '2026-01-02', company: 'Anghami', summary: 'Arab world\'s leading music streaming platform becomes first Arab tech company to list on NASDAQ.', significance_score: 9.1, relevance_score: 9.8 },
-  { id: '5', title: 'Swvl Expands Mass Transit to Latin America', source: 'The Verge', date: '2026-01-01', company: 'Swvl', summary: 'Egyptian mobility startup enters Latin American market with bus booking services in Mexico and Colombia.', significance_score: 7.3, relevance_score: 8.0 },
-  { id: '6', title: 'Fawry Partners with Major Banks for Digital Payments', source: 'Fintech News', date: '2025-12-30', company: 'Fawry', summary: 'Egypt\'s leading fintech company announces strategic partnerships with five major banks.', significance_score: 6.8, relevance_score: 7.5 },
+  { id: '2', title: 'Careem Launches Super App in Saudi Arabia', source: 'Bloomberg', date: '2026-01-04', company: 'Careem', summary: 'Uber-owned Careem expands its super app services to include food delivery and payments in KSA.', significance_score: 7.8, relevance_score: 8.7, matchStatus: 'not-match' as const },
+  { id: '3', title: 'Kitopi Opens 50 New Cloud Kitchens in UAE', source: 'Arabian Business', date: '2026-01-03', company: 'Kitopi', summary: 'Food-tech unicorn accelerates expansion with new cloud kitchen locations across Dubai and Abu Dhabi.', significance_score: 6.2, relevance_score: 7.1, matchStatus: 'match' as const },
+  { id: '4', title: 'Anghami Goes Public on NASDAQ', source: 'Reuters', date: '2026-01-02', company: 'Anghami', summary: 'Arab world\'s leading music streaming platform becomes first Arab tech company to list on NASDAQ.', significance_score: 9.1, relevance_score: 9.8, matchStatus: 'match' as const },
+  { id: '5', title: 'Swvl Expands Mass Transit to Latin America', source: 'The Verge', date: '2026-01-01', company: 'Swvl', summary: 'Egyptian mobility startup enters Latin American market with bus booking services in Mexico and Colombia.', significance_score: 7.3, relevance_score: 8.0, matchStatus: 'not-match' as const },
+  { id: '6', title: 'Fawry Partners with Major Banks for Digital Payments', source: 'Fintech News', date: '2025-12-30', company: 'Fawry', summary: 'Egypt\'s leading fintech company announces strategic partnerships with five major banks.', significance_score: 6.8, relevance_score: 7.5, matchStatus: 'match' as const },
 ];
 
 // Sample Signals Data
 export const sampleSignals = [
-  { id: '1', signalType: 'Funding', company: 'Noon', date: '2026-01-05', confidence: 'High', source: 'https://techcrunch.com/noon-funding', description: 'Series D funding round of $500M led by SoftBank' },
-  { id: '2', signalType: 'Acquisition', company: 'Careem', date: '2026-01-04', confidence: 'High', source: 'https://bloomberg.com/careem-acquisition', description: 'Acquired local delivery startup for $50M' },
-  { id: '3', signalType: 'Leadership', company: 'Kitopi', date: '2026-01-03', confidence: 'Medium', source: 'https://linkedin.com/kitopi-cto', description: 'New CTO appointed from Amazon' },
-  { id: '4', signalType: 'Expansion', company: 'Anghami', date: '2026-01-02', confidence: 'High', source: 'https://reuters.com/anghami-expansion', description: 'Expanding to 5 new MENA countries' },
-  { id: '5', signalType: 'Product', company: 'Swvl', date: '2026-01-01', confidence: 'Medium', source: 'https://theverge.com/swvl-product', description: 'Launching corporate shuttle service' },
-  { id: '6', signalType: 'Partnership', company: 'Fawry', date: '2025-12-30', confidence: 'High', source: 'https://fintechnews.com/fawry', description: 'Strategic partnership with Visa for card issuance' },
-  { id: '7', signalType: 'Layoff', company: 'TechStartup XYZ', date: '2025-12-28', confidence: 'High', source: 'https://layoffs.fyi/xyz', description: '20% workforce reduction announced' },
-  { id: '8', signalType: 'Job Changes', company: 'Noon', date: '2025-12-27', confidence: 'High', source: 'https://linkedin.com/noon-cfo', description: 'CFO resignation announced, new finance director appointed from Google' },
-  { id: '9', signalType: 'Job Changes', company: 'Careem', date: '2025-12-26', confidence: 'Medium', source: 'https://techcrunch.com/careem-hiring', description: 'VP of Engineering hired from Uber, Head of Product moved to Meta' },
-  { id: '10', signalType: 'Job Changes', company: 'Anghami', date: '2025-12-25', confidence: 'High', source: 'https://reuters.com/anghami-executives', description: 'Three senior executives left for competitor Spotify, mass hiring spree announced' },
+  { id: '1', signalType: 'Funding', person: 'Faraz Khalid', company: 'Noon', date: '2026-01-05', confidence: 'High', source: 'https://techcrunch.com/noon-funding', description: 'Series D funding round of $500M led by SoftBank' },
+  { id: '2', signalType: 'Acquisition', person: 'Mudassir Sheikha', company: 'Careem', date: '2026-01-04', confidence: 'High', source: 'https://bloomberg.com/careem-acquisition', description: 'Acquired local delivery startup for $50M' },
+  { id: '3', signalType: 'Leadership', person: 'Mohammed Ballout', company: 'Kitopi', date: '2026-01-03', confidence: 'Medium', source: 'https://linkedin.com/kitopi-cto', description: 'New CTO appointed from Amazon' },
+  { id: '4', signalType: 'Expansion', person: 'Elyas Mroue', company: 'Anghami', date: '2026-01-02', confidence: 'High', source: 'https://reuters.com/anghami-expansion', description: 'Expanding to 5 new MENA countries' },
+  { id: '5', signalType: 'Product', person: 'Mostafa Kandil', company: 'Swvl', date: '2026-01-01', confidence: 'Medium', source: 'https://theverge.com/swvl-product', description: 'Launching corporate shuttle service' },
+  { id: '6', signalType: 'Partnership', person: 'Ashraf Sabry', company: 'Fawry', date: '2025-12-30', confidence: 'High', source: 'https://fintechnews.com/fawry', description: 'Strategic partnership with Visa for card issuance' },
+  { id: '7', signalType: 'Layoff', person: 'Leadership Team', company: 'TechStartup XYZ', date: '2025-12-28', confidence: 'High', source: 'https://layoffs.fyi/xyz', description: '20% workforce reduction announced' },
+  { id: '8', signalType: 'Job Changes', person: 'Aisha Khan', company: 'Noon', date: '2025-12-27', confidence: 'High', source: 'https://linkedin.com/noon-cfo', description: 'CFO resignation announced, new finance director appointed from Google' },
+  { id: '9', signalType: 'Job Changes', person: 'Samir Nasser', company: 'Careem', date: '2025-12-26', confidence: 'Medium', source: 'https://techcrunch.com/careem-hiring', description: 'VP of Engineering hired from Uber, Head of Product moved to Meta' },
+  { id: '10', signalType: 'Job Changes', person: 'Anthony Sayegh', company: 'Anghami', date: '2025-12-25', confidence: 'High', source: 'https://reuters.com/anghami-executives', description: 'Three senior executives left for competitor Spotify, mass hiring spree announced' },
   { id: '11', signalType: 'Job Change', person: 'Sarah Johnson', company: 'Tech Corp - Innovation Labs', date: '2025-12-28', confidence: 'High', source: 'https://linkedin.com/sarah-johnson', description: 'Promoted to VP of Engineering' },
   { id: '12', signalType: 'New Hire', person: 'Michael Chen', company: 'Startup Inc', date: '2025-12-27', confidence: 'Medium', source: 'https://techcrunch.com/michael-chen', description: 'Joined as CTO' },
   { id: '13', signalType: 'Funding Round', person: 'David Martinez', company: 'Growth Ventures', date: '2025-12-26', confidence: 'High', source: 'https://crunchbase.com/growth-ventures', description: 'Series B - $50M raised' },
@@ -207,4 +213,3 @@ export const getEmptyData = (): Record<TabId, any[]> => ({
   patents: [],
   'research-papers': [],
 });
-
