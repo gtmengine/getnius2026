@@ -41,7 +41,6 @@ export interface AgGridWrapperProps {
   className?: string;
   height?: string;
   rowSelection?: 'single' | 'multiple';
-  checkboxSelection?: boolean;
   loading?: boolean;
   emptyMessage?: string;
   getRowClass?: (params: any) => string;
@@ -64,7 +63,6 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
   className = "",
   height = "60vh",
   rowSelection = "multiple",
-  checkboxSelection = true,
   loading = false,
   emptyMessage = "No results to display",
   getRowClass,
@@ -121,24 +119,6 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
     minWidth: 100,
   }), []);
 
-  // Row selection configuration for AG Grid v34+
-  const rowSelectionConfig = useMemo(() => {
-    if (rowSelection === 'multiple') {
-      return {
-        mode: 'multiRow' as const,
-        checkboxes: checkboxSelection,
-        headerCheckbox: checkboxSelection,
-        enableClickSelection: true,
-        enableSelectionWithoutKeys: true,
-      };
-    }
-    return {
-      mode: 'singleRow' as const,
-      checkboxes: checkboxSelection,
-      enableClickSelection: true,
-    };
-  }, [rowSelection, checkboxSelection]);
-
   const loadingOverlayComponent = useMemo(() => {
     return () => (
       <div className="flex flex-col items-center justify-center gap-3 p-8">
@@ -172,7 +152,7 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
         onCellValueChanged={handleCellValueChanged}
         onColumnHeaderClicked={handleColumnHeaderClicked}
         animateRows={true}
-        rowSelection={rowSelectionConfig}
+        rowSelection={rowSelection}
         defaultColDef={defaultColDef}
         loadingOverlayComponent={loadingOverlayComponent}
         noRowsOverlayComponent={noRowsOverlayComponent}

@@ -24,10 +24,11 @@ import {
   Plus
 } from 'lucide-react';
 import { AgGridWrapper, AgGridWrapperRef } from '@/components/ui/ag-grid-wrapper';
-import { columnDefsMap, TabId, tabConfigs } from '@/lib/grid-columns';
+import { columnDefsMap, getExportColumnsForTab, TabId, tabConfigs } from '@/lib/grid-columns';
 import { sampleDataMap, getEmptyData } from '@/lib/sample-data';
 import { ColDef } from 'ag-grid-community';
 import { searchWithGoogle } from '@/lib/search-apis';
+import { downloadCSV, toCSV } from '@/lib/csv';
 
 // Icon map for tabs
 const iconMap = {
@@ -43,13 +44,13 @@ const iconMap = {
 // SearchHeader Component
 // ============================================================================
 interface SearchHeaderProps {
-  searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
+  query: string;
+  onQueryChange: (value: string) => void;
   onSearch: () => void;
   isSearching: boolean;
 }
 
-function SearchHeader({ searchQuery, onSearchQueryChange, onSearch, isSearching }: SearchHeaderProps) {
+function SearchHeader({ query, onQueryChange, onSearch, isSearching }: SearchHeaderProps) {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isSearching) {
       onSearch();
@@ -65,8 +66,8 @@ function SearchHeader({ searchQuery, onSearchQueryChange, onSearch, isSearching 
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => onSearchQueryChange(e.target.value)}
+              value={query}
+              onChange={(e) => onQueryChange(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Describe your target market, e.g. 'AI meeting transcription tools for enterprises'"
               className="w-full pl-12 pr-4 py-3.5 text-base border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all placeholder:text-gray-400"
@@ -74,7 +75,7 @@ function SearchHeader({ searchQuery, onSearchQueryChange, onSearch, isSearching 
           </div>
           <button
             onClick={onSearch}
-            disabled={isSearching || !searchQuery.trim()}
+            disabled={isSearching || !query.trim()}
             className="px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:from-indigo-400 disabled:to-indigo-400 text-white rounded-xl font-semibold flex items-center gap-2.5 transition-all shadow-sm hover:shadow-md disabled:cursor-not-allowed min-w-[140px] justify-center"
           >
             {isSearching ? (
@@ -162,6 +163,7 @@ interface ResultsToolbarProps {
   onDelete: () => void;
   onAddColumn: () => void;
   onAddRow: () => void;
+  onExport: () => void;
   activeTab: TabId;
   significanceMin: number;
   relevanceMin: number;
@@ -178,6 +180,7 @@ function ResultsToolbar({
   onDelete,
   onAddColumn,
   onAddRow,
+  onExport,
   activeTab,
   significanceMin,
   relevanceMin,
@@ -304,7 +307,10 @@ function ResultsToolbar({
             {selectedCount} selected
           </span>
         )}
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-gray-100 text-gray-700 hover:bg-gray-200">
+        <button
+          onClick={onExport}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-gray-100 text-gray-700 hover:bg-gray-200"
+        >
           <Download className="w-3.5 h-3.5" />
           Export
         </button>
@@ -327,6 +333,7 @@ interface ResultsPanelProps {
   onAddRow: () => void;
   onMatch: () => void;
   onNotMatch: () => void;
+  onExport: () => void;
   customColumns: Record<TabId, ColDef[]>;
   onColumnHeaderDoubleClick: (columnField: string, currentName: string) => void;
   setResults: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>;
@@ -350,6 +357,7 @@ function ResultsPanel({
   onAddRow,
   onMatch,
   onNotMatch,
+  onExport,
   customColumns,
   onColumnHeaderDoubleClick,
   setResults,
@@ -588,6 +596,7 @@ function ResultsPanel({
           onDelete={handleDelete}
           onAddColumn={onAddColumn}
           onAddRow={onAddRow}
+          onExport={onExport}
           activeTab={activeTab}
           significanceMin={significanceMin}
           relevanceMin={relevanceMin}
@@ -609,7 +618,6 @@ function ResultsPanel({
           onColumnHeaderDoubleClick={onColumnHeaderDoubleClick}
           emptyMessage={`No ${activeTab} data available.`}
           rowSelection="multiple"
-          checkboxSelection={activeTab !== 'news'} // Disable general checkbox for news tab since it has a dedicated column
           getRowClass={getRowClass}
         />
       </div>
@@ -622,10 +630,18 @@ function ResultsPanel({
 // ============================================================================
 export default function Page() {
   // State
-  const [searchQuery, setSearchQuery] = useState("");
+  const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabId>('companies');
   const [isSearching, setIsSearching] = useState(false);
-  const [results, setResults] = useState<Record<TabId, any[]>>(sampleDataMap);
+  const [resultsByTab, setResultsByTab] = useState<Record<TabId, any[]>>(() => getEmptyData());
+  const [searchedTabs, setSearchedTabs] = useState<Record<TabId, boolean>>(() => {
+    return tabConfigs.reduce((acc, tab) => {
+      acc[tab.id] = false;
+      return acc;
+    }, {} as Record<TabId, boolean>);
+  });
+  const results = resultsByTab;
+  const setResults = setResultsByTab;
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [customColumns, setCustomColumns] = useState<Record<TabId, ColDef[]>>({});
@@ -680,93 +696,84 @@ export default function Page() {
     const matchStatus = params.data?.matchStatus;
     const newlyAdded = params.data?.newlyAdded;
     const isSelected = params.node?.isSelected();
+    const isCompaniesTab = activeTab === 'companies';
+    const isPeopleTab = activeTab === 'people';
+    const isNewsTab = activeTab === 'news';
 
+    if (isPeopleTab || isNewsTab) {
+      return '';
+    }
     if (newlyAdded) {
       return 'row-newly-added';
-    } else if (isMatchActive && isSelected) {
+    } else if (!isCompaniesTab && isMatchActive && isSelected) {
       return 'row-selected-match'; // Light green background for selected rows when Match is active
-    } else if (matchStatus === 'match') {
+    } else if (!isCompaniesTab && matchStatus === 'match') {
       return 'row-match';
-    } else if (matchStatus === 'not-match') {
+    } else if (!isCompaniesTab && matchStatus === 'not-match') {
       return 'row-not-match';
     } else if (matchStatus === 'suggested') {
       return 'row-suggested';
     }
     return '';
-  }, [isMatchActive]); // Row background styling function
+  }, [activeTab, isMatchActive]); // Row background styling function
 
   // Calculate result counts per tab (use filtered results for news)
   const resultCounts = useMemo(() => ({
-    companies: filteredResults.companies.length,
-    people: filteredResults.people.length,
-    news: filteredResults.news.length,
-    signals: filteredResults.signals.length,
-    market: filteredResults.market.length,
-    patents: filteredResults.patents.length,
-    'research-papers': filteredResults['research-papers'].length,
-  }), [filteredResults]);
+    companies: searchedTabs.companies ? filteredResults.companies.length : 0,
+    people: searchedTabs.people ? filteredResults.people.length : 0,
+    news: searchedTabs.news ? filteredResults.news.length : 0,
+    signals: searchedTabs.signals ? filteredResults.signals.length : 0,
+    market: searchedTabs.market ? filteredResults.market.length : 0,
+    patents: searchedTabs.patents ? filteredResults.patents.length : 0,
+    'research-papers': searchedTabs['research-papers'] ? filteredResults['research-papers'].length : 0,
+  }), [filteredResults, searchedTabs]);
   
   // Search handler
-  const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim()) return;
-    
+  const handleSearch = useCallback(() => {
+    if (!query.trim()) return;
+
     setIsSearching(true);
     setError(null);
     setSelectedRows([]);
-    
-    try {
-      // Call the search API
-      const companies = await searchWithGoogle(searchQuery);
-      
-      // Transform API results to match our grid format
-      const transformedCompanies = companies.map((company, index) => ({
-        id: company.id || `company-${index}`,
-        name: company.name,
-        description: company.description,
-        location: company.location || 'N/A',
-        founded: company.founded || 'N/A',
-        employees: company.employees || 'N/A',
-        status: company.status === 'validated' ? 'Active' : 'Pending',
-        revenue: company.funding || 'N/A',
-        people: Math.floor(Math.random() * 10),
-        news: Math.floor(Math.random() * 8),
-        logo: company.logo || '/placeholder.svg',
-      }));
-      
-      // If API returns results, use them; otherwise use sample data for demo
-      const finalCompanies = transformedCompanies.length > 0 
-        ? transformedCompanies 
-        : sampleDataMap.companies;
-      
-      // Update results for all tabs (for demo, use sample data for other tabs)
-      setResults({
-        companies: finalCompanies,
-        people: sampleDataMap.people,
-        news: sampleDataMap.news,
-        signals: sampleDataMap.signals,
-        market: sampleDataMap.market,
-        patents: sampleDataMap.patents,
-        'research-papers': sampleDataMap['research-papers'],
-      });
-      
-    } catch (err) {
-      console.error('Search error:', err);
-      setError('Search failed. Using demo data.');
-      
-      // Fall back to sample data
-      setResults({
-        companies: sampleDataMap.companies,
-        people: sampleDataMap.people,
-        news: sampleDataMap.news,
-        signals: sampleDataMap.signals,
-        market: sampleDataMap.market,
-        patents: sampleDataMap.patents,
-        'research-papers': sampleDataMap['research-papers'],
-      });
-    } finally {
-      setIsSearching(false);
+
+    let nextResults: any[] = [];
+
+    switch (activeTab) {
+      case 'companies':
+        nextResults = sampleDataMap.companies;
+        break;
+      case 'people':
+        nextResults = sampleDataMap.people;
+        break;
+      case 'news':
+        nextResults = sampleDataMap.news;
+        break;
+      case 'signals':
+        nextResults = sampleDataMap.signals;
+        break;
+      case 'market':
+        nextResults = sampleDataMap.market;
+        break;
+      case 'patents':
+        nextResults = sampleDataMap.patents;
+        break;
+      case 'research-papers':
+        nextResults = sampleDataMap['research-papers'];
+        break;
+      default:
+        nextResults = [];
     }
-  }, [searchQuery]);
+
+    setResults((prevResults) => ({
+      ...prevResults,
+      [activeTab]: nextResults,
+    }));
+    setSearchedTabs((prevTabs) => ({
+      ...prevTabs,
+      [activeTab]: true,
+    }));
+    setIsSearching(false);
+  }, [activeTab, query, setResults]);
   
   // Tab change handler
   const handleTabChange = useCallback((tab: TabId) => {
@@ -811,6 +818,24 @@ export default function Page() {
   const handleRelevanceChange = useCallback((value: number) => {
     setRelevanceMin(value);
   }, []);
+
+  const handleExport = useCallback(() => {
+    const rows = filteredResults[activeTab] || [];
+    const exportColumns = getExportColumnsForTab(activeTab, customColumns[activeTab] || []);
+    const csv = toCSV(rows, exportColumns);
+
+    if (!csv) {
+      console.warn('No exportable columns found.');
+      return;
+    }
+
+    const tabLabel = tabConfigs.find((tab) => tab.id === activeTab)?.label || activeTab;
+    const tabSlug = tabLabel.toLowerCase().replace(/\s+/g, '-');
+    const dateStamp = new Date().toISOString().split('T')[0];
+    const filename = `getnius-${tabSlug}-${dateStamp}.csv`;
+
+    downloadCSV(filename, csv);
+  }, [activeTab, customColumns, filteredResults]);
 
   // Column name change handler (for custom columns)
   const handleColumnNameChange = useCallback((tab: TabId, fieldName: string, newName: string) => {
@@ -1336,8 +1361,8 @@ export default function Page() {
       <main className="max-w-[1600px] mx-auto px-6 py-6 space-y-4">
         {/* Search Header */}
         <SearchHeader
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
+          query={query}
+          onQueryChange={setQuery}
           onSearch={handleSearch}
           isSearching={isSearching}
         />
@@ -1370,6 +1395,7 @@ export default function Page() {
           onAddRow={() => handleAddRow(activeTab, setResults, customColumns)}
           onMatch={() => handleMatch(selectedRows, setResults, results, activeTab, setSelectedRows)}
           onNotMatch={() => handleNotMatch(selectedRows, setResults, results, activeTab, setSelectedRows)}
+          onExport={handleExport}
           customColumns={customColumns}
           onColumnHeaderDoubleClick={(columnField, currentName) => {
             // Only allow editing custom columns (those containing "Custom" in the name)

@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { ColDef } from 'ag-grid-community';
 import { AgGridWrapper } from '@/components/ui/ag-grid-wrapper';
+import { selectCol } from '@/lib/grid-columns';
 
 interface PeopleGridProps {
   onRowSelect: (person: any) => void;
@@ -18,6 +19,7 @@ const samplePeople = [
 
 export function PeopleGrid({ onRowSelect }: PeopleGridProps) {
   const columnDefs = useMemo<ColDef[]>(() => [
+    selectCol(),
     {
       field: 'name',
       headerName: 'Name',
