@@ -703,10 +703,17 @@ export const columnDefsMap: Record<TabId, ColDef[]> = {
 };
 
 const isExportableColumn = (colDef: ColDef) =>
-  Boolean(colDef.field) && colDef.colId !== 'select' && colDef.field !== 'actions';
+  Boolean(colDef.field) &&
+  colDef.colId !== 'select' &&
+  colDef.field !== 'actions' &&
+  !colDef.hide;
 
-export const getExportColumnsForTab = (tab: TabId, customColumns: ColDef[] = []) => {
-  const columns = [...(columnDefsMap[tab] || []), ...customColumns];
+export const getExportColumnsForTab = (
+  tab: TabId,
+  customColumns: ColDef[] = [],
+  columnDefsOverride?: ColDef[]
+) => {
+  const columns = columnDefsOverride ?? [...(columnDefsMap[tab] || []), ...customColumns];
   const uniqueFields = new Set<string>();
 
   columns.forEach((colDef) => {

@@ -24,9 +24,20 @@ import {
   Plus
 } from 'lucide-react';
 import { AgGridWrapper, AgGridWrapperRef } from '@/components/ui/ag-grid-wrapper';
+import { AddColumnModal } from '@/components/modals/AddColumnModal';
+import { AddRowModal } from '@/components/modals/AddRowModal';
 import { columnDefsMap, getExportColumnsForTab, TabId, tabConfigs } from '@/lib/grid-columns';
-import { sampleDataMap, getEmptyData } from '@/lib/sample-data';
+import { sampleDataMap } from '@/lib/sample-data';
 import { ColDef } from 'ag-grid-community';
+import {
+  ColumnKind,
+  StoredColumnDef,
+  getRowDataStorageKey,
+  loadStoredColumnDefs,
+  loadStoredRowData,
+  saveStoredColumnDefs,
+  saveStoredRowData,
+} from '@/lib/dynamicSchema';
 import { searchWithGoogle } from '@/lib/search-apis';
 import { downloadCSV, toCSV } from '@/lib/csv';
 
@@ -38,6 +49,126 @@ const iconMap = {
   'trending-up': TrendingUp,
   'file-text': FileText,
   'book-open': BookOpen,
+};
+
+type CustomColDef = ColDef & {
+  __isCustom?: true;
+  columnType?: ColumnKind;
+};
+
+const BadgeRenderer = (params: any) => {
+  const value = params.value || '';
+  if (!value) return <span className="text-gray-400">N/A</span>;
+  return (
+    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+      {value}
+    </span>
+  );
+};
+
+const LinkRenderer = (params: any) => {
+  const url = params.value;
+  if (!url) return <span className="text-gray-400">N/A</span>;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block truncate text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+      onClick={(event) => event.stopPropagation()}
+    >
+      {url}
+    </a>
+  );
+};
+
+const numberValueParser = (params: any) => {
+  const value = params.newValue ?? params.value;
+  if (value === '' || value === null || value === undefined) return '';
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? '' : parsed;
+};
+
+const mergeColumns = (baseColumns: ColDef[], customColumns: ColDef[]) => {
+  const actionsIndex = baseColumns.findIndex((col) => col.field === 'actions');
+  if (actionsIndex === -1) {
+    return [...baseColumns, ...customColumns];
+  }
+  return [
+    ...baseColumns.slice(0, actionsIndex),
+    ...customColumns,
+    ...baseColumns.slice(actionsIndex),
+  ];
+};
+
+const toStoredColumns = (columns: ColDef[]) =>
+  columns
+    .filter((col) => (col as CustomColDef).__isCustom && col.field)
+    .map((col) => {
+      const custom = col as CustomColDef;
+      return {
+        headerName: col.headerName || '',
+        field: col.field || '',
+        type: custom.columnType || 'text',
+        width: col.width,
+        minWidth: col.minWidth,
+        flex: col.flex,
+      } satisfies StoredColumnDef;
+    });
+
+const buildCustomColumnDef = (stored: StoredColumnDef): CustomColDef => {
+  const base: CustomColDef = {
+    field: stored.field,
+    headerName: stored.headerName,
+    editable: true,
+    sortable: true,
+    filter: true,
+    resizable: true,
+    minWidth: stored.minWidth ?? 140,
+    width: stored.width,
+    flex: stored.flex,
+    __isCustom: true,
+    columnType: stored.type,
+  };
+
+  if (stored.type === 'number') {
+    base.type = 'number';
+    base.cellClass = 'text-right';
+    base.valueParser = numberValueParser;
+  }
+
+  if (stored.type === 'badge') {
+    base.cellRenderer = BadgeRenderer;
+  }
+
+  if (stored.type === 'link') {
+    base.cellRenderer = LinkRenderer;
+  }
+
+  return base;
+};
+
+const getDataColumns = (columns: ColDef[]) =>
+  columns.filter(
+    (col) =>
+      Boolean(col.field) &&
+      col.colId !== 'select' &&
+      col.field !== 'actions' &&
+      !col.hide
+  );
+
+const getAllColumnFields = (columns: ColDef[]) =>
+  columns
+    .map((col) => col.field)
+    .filter((field): field is string => Boolean(field));
+
+const coerceValueByType = (value: string, type: ColumnKind) => {
+  if (type === 'number') {
+    if (!value) return '';
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? '' : parsed;
+  }
+  return value;
 };
 
 // ============================================================================
@@ -334,9 +465,12 @@ interface ResultsPanelProps {
   onMatch: () => void;
   onNotMatch: () => void;
   onExport: () => void;
-  customColumns: Record<TabId, ColDef[]>;
+  columnDefsByTab: Record<TabId, ColDef[]>;
   onColumnHeaderDoubleClick: (columnField: string, currentName: string) => void;
-  setResults: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>;
+  setSelectedRows: React.Dispatch<React.SetStateAction<any[]>>;
+  setRowDataByTab: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>;
+  setSearchProgress: React.Dispatch<React.SetStateAction<string | null>>;
+  isContinuousSearchActiveRef: React.MutableRefObject<boolean>;
   gridRef: React.RefObject<AgGridWrapperRef>;
   significanceMin: number;
   relevanceMin: number;
@@ -358,9 +492,12 @@ function ResultsPanel({
   onMatch,
   onNotMatch,
   onExport,
-  customColumns,
+  columnDefsByTab,
   onColumnHeaderDoubleClick,
-  setResults,
+  setSelectedRows,
+  setRowDataByTab,
+  setSearchProgress,
+  isContinuousSearchActiveRef,
   gridRef,
   significanceMin,
   relevanceMin,
@@ -370,10 +507,8 @@ function ResultsPanel({
   searchProgress
 }: ResultsPanelProps) {
   const columnDefs = useMemo(() => {
-    const baseColumns = columnDefsMap[activeTab] || [];
-    const customCols = customColumns[activeTab] || [];
-    return [...baseColumns, ...customCols];
-  }, [activeTab, customColumns]);
+    return columnDefsByTab[activeTab] || [];
+  }, [activeTab, columnDefsByTab]);
   const rowData = useMemo(() => results[activeTab] || [], [results, activeTab]);
   
   
@@ -452,7 +587,7 @@ function ResultsPanel({
 
         if (uniqueQueries.length === 0) {
           console.warn('No search queries available');
-          setIsContinuousSearchActive(false);
+          isContinuousSearchActiveRef.current = false;
           setSearchProgress(null);
           return;
         }
@@ -560,19 +695,6 @@ function ResultsPanel({
     // Implement delete logic
   };
 
-  const handleAddColumn = () => {
-    console.log('Adding new column to:', activeTab);
-    // For now, show a prompt or dialog to add a custom column
-    const columnName = prompt('Enter column name:');
-    if (columnName && columnName.trim()) {
-      // This would typically update the column definitions
-      // For now, we'll just log it
-      console.log(`New column "${columnName}" would be added to ${activeTab} tab`);
-      alert(`Column "${columnName}" functionality would be added here.\n\nIn a full implementation, this would:\n• Add the column to columnDefs\n• Update the data structure\n• Make it editable`);
-    }
-  };
-
-  
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       {/* Progress Indicator */}
@@ -591,7 +713,7 @@ function ResultsPanel({
           selectedCount={selectedRows.length}
           onMatch={onMatch}
           onNotMatch={onNotMatch}
-          onFindLookalikes={() => handleFindLookalikes(selectedRows, setResults, results, activeTab, setSelectedRows)}
+          onFindLookalikes={() => handleFindLookalikes(selectedRows, setRowDataByTab, results, activeTab, setSelectedRows)}
           onEnrich={handleEnrich}
           onDelete={handleDelete}
           onAddColumn={onAddColumn}
@@ -633,21 +755,43 @@ export default function Page() {
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabId>('companies');
   const [isSearching, setIsSearching] = useState(false);
-  const [resultsByTab, setResultsByTab] = useState<Record<TabId, any[]>>(() => getEmptyData());
+  const [columnDefsByTab, setColumnDefsByTab] = useState<Record<TabId, ColDef[]>>(() => {
+    const map = {} as Record<TabId, ColDef[]>;
+    tabConfigs.forEach((tab) => {
+      const baseColumns = columnDefsMap[tab.id] || [];
+      const storedColumns = loadStoredColumnDefs(tab.id).map(buildCustomColumnDef);
+      map[tab.id] = mergeColumns(baseColumns, storedColumns);
+    });
+    return map;
+  });
+  const [rowDataByTab, setRowDataByTab] = useState<Record<TabId, any[]>>(() => {
+    const map = {} as Record<TabId, any[]>;
+    tabConfigs.forEach((tab) => {
+      if (typeof window === 'undefined') {
+        map[tab.id] = sampleDataMap[tab.id] || [];
+        return;
+      }
+      const storageKey = getRowDataStorageKey(tab.id);
+      const hasStored = localStorage.getItem(storageKey) !== null;
+      map[tab.id] = hasStored ? loadStoredRowData(tab.id) : (sampleDataMap[tab.id] || []);
+    });
+    return map;
+  });
   const [searchedTabs, setSearchedTabs] = useState<Record<TabId, boolean>>(() => {
     return tabConfigs.reduce((acc, tab) => {
-      acc[tab.id] = false;
+      acc[tab.id] = true;
       return acc;
     }, {} as Record<TabId, boolean>);
   });
-  const results = resultsByTab;
-  const setResults = setResultsByTab;
+  const results = rowDataByTab;
+  const setResults = setRowDataByTab;
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [customColumns, setCustomColumns] = useState<Record<TabId, ColDef[]>>({});
   const [searchProgress, setSearchProgress] = useState<string | null>(null);
   const [isMatchActive, setIsMatchActive] = useState(false);
   const isContinuousSearchActiveRef = useRef(false);
+  const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
+  const [isAddRowOpen, setIsAddRowOpen] = useState(false);
 
   // News filter states
   const [significanceMin, setSignificanceMin] = useState<number>(() => {
@@ -666,7 +810,6 @@ export default function Page() {
   });
   
   const gridRef = useRef<AgGridWrapperRef>(null);
-  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Persist slider values to localStorage
   useEffect(() => {
@@ -676,6 +819,19 @@ export default function Page() {
   useEffect(() => {
     localStorage.setItem('news-relevance-min', relevanceMin.toString());
   }, [relevanceMin]);
+
+  useEffect(() => {
+    tabConfigs.forEach((tab) => {
+      const storedColumns = toStoredColumns(columnDefsByTab[tab.id] || []);
+      saveStoredColumnDefs(tab.id, storedColumns);
+    });
+  }, [columnDefsByTab]);
+
+  useEffect(() => {
+    tabConfigs.forEach((tab) => {
+      saveStoredRowData(tab.id, rowDataByTab[tab.id] || []);
+    });
+  }, [rowDataByTab]);
 
   // Filter news data based on slider values
   const filteredNews = useMemo(() => {
@@ -821,7 +977,7 @@ export default function Page() {
 
   const handleExport = useCallback(() => {
     const rows = filteredResults[activeTab] || [];
-    const exportColumns = getExportColumnsForTab(activeTab, customColumns[activeTab] || []);
+    const exportColumns = getExportColumnsForTab(activeTab, [], columnDefsByTab[activeTab] || []);
     const csv = toCSV(rows, exportColumns);
 
     if (!csv) {
@@ -835,64 +991,59 @@ export default function Page() {
     const filename = `getnius-${tabSlug}-${dateStamp}.csv`;
 
     downloadCSV(filename, csv);
-  }, [activeTab, customColumns, filteredResults]);
+  }, [activeTab, columnDefsByTab, filteredResults]);
 
   // Column name change handler (for custom columns)
   const handleColumnNameChange = useCallback((tab: TabId, fieldName: string, newName: string) => {
-    setCustomColumns(prev => {
+    setColumnDefsByTab(prev => {
       const tabColumns = prev[tab] || [];
-      const updatedColumns = tabColumns.map(col =>
-        col.field === fieldName ? { ...col, headerName: newName } : col
-      );
+      const updatedColumns = tabColumns.map(col => {
+        if ((col as CustomColDef).__isCustom && col.field === fieldName) {
+          return { ...col, headerName: newName };
+        }
+        return col;
+      });
 
       return {
         ...prev,
-        [tab]: updatedColumns
+        [tab]: updatedColumns,
       };
     });
   }, []);
 
-  // Add Column handler
-  const handleAddColumn = useCallback(() => {
-    console.log('Adding new column to:', activeTab);
-    // For testing purposes, use a predefined column name since prompt() is not supported in this environment
-    const sanitizedColumnName = `Custom Column ${Date.now()}`;
-    const fieldName = sanitizedColumnName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  const handleAddColumnSubmit = useCallback((payload: {
+    headerName: string;
+    field: string;
+    type: ColumnKind;
+    defaultValue: string;
+  }) => {
+    const newColumn: CustomColDef = buildCustomColumnDef({
+      headerName: payload.headerName,
+      field: payload.field,
+      type: payload.type,
+    });
 
-    // Create new column definition
-    const newColumn: ColDef = {
-      field: fieldName,
-      headerName: sanitizedColumnName,
-      editable: true,
-      sortable: true,
-      filter: true,
-      resizable: true,
-      minWidth: 120,
-    };
+    setColumnDefsByTab(prev => {
+      const tabColumns = prev[activeTab] || [];
+      return {
+        ...prev,
+        [activeTab]: mergeColumns(tabColumns, [newColumn]),
+      };
+    });
 
-    // Add column to custom columns
-    setCustomColumns(prev => ({
-      ...prev,
-      [activeTab]: [...(prev[activeTab] || []), newColumn]
-    }));
-
-    // Update all existing rows to include the new column with default value
     setResults(prevResults => {
       const newResults = { ...prevResults };
       const tabData = [...newResults[activeTab]];
+      const defaultValue = coerceValueByType(payload.defaultValue, payload.type);
 
-      // Add the new field to all existing rows
-      const updatedTabData = tabData.map(row => ({
+      newResults[activeTab] = tabData.map(row => ({
         ...row,
-        [fieldName]: ''
+        [payload.field]: defaultValue,
       }));
 
-      newResults[activeTab] = updatedTabData;
       return newResults;
     });
-
-    console.log(`Added new column "${sanitizedColumnName}" to ${activeTab} tab`);
-  }, [activeTab, setCustomColumns, setResults]);
+  }, [activeTab, setColumnDefsByTab, setResults]);
 
   // Match/Not Match handlers
   const handleMatch = useCallback(async (selectedRows: any[], setResultsFn: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>, results: Record<TabId, any[]>, activeTab: TabId, setSelectedRows: React.Dispatch<React.SetStateAction<any[]>>) => {
@@ -1200,126 +1351,32 @@ export default function Page() {
     setSelectedRows([]);
   }, []);
 
-  // Add Row handler
-  const handleAddRow = useCallback((tab: TabId, setResultsFn: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>, customColumns?: Record<TabId, ColDef[]>) => {
-    console.log('Adding new row to:', tab);
+  const handleAddRowSubmit = useCallback((values: Record<string, any>) => {
+    const newRow = {
+      id: `${activeTab}-${Date.now()}`,
+      ...values,
+    };
 
-    setResultsFn(prevResults => {
+    setResults(prevResults => {
       const newResults = { ...prevResults };
-      const tabData = [...newResults[tab]];
-
-      // Create a new empty row based on the current tab
-      let newRow: any = {};
-
-      switch (tab) {
-        case 'companies':
-          newRow = {
-            id: `company-${Date.now()}`,
-            name: 'New Company',
-            description: 'Enter description',
-            location: 'Enter location',
-            founded: '',
-            employees: '',
-            status: 'Active',
-            revenue: '',
-            people: 0,
-            news: 0,
-            logo: '/placeholder.svg',
-            matchStatus: null
-          };
-          break;
-        case 'people':
-          newRow = {
-            id: `person-${Date.now()}`,
-            name: 'New Person',
-            company: 'New Company',
-            role: 'New Role',
-            location: 'New Location',
-            email: 'new@email.com',
-            intents: 0,
-            matchStatus: null
-          };
-          break;
-        case 'news':
-          newRow = {
-            id: `news-${Date.now()}`,
-            title: 'New Article Title',
-            source: 'New Source',
-            date: new Date().toISOString().split('T')[0],
-            company: 'New Company',
-            summary: 'Enter article summary',
-            significance_score: 5.0,
-            relevance_score: 5.0,
-            matchStatus: null
-          };
-          break;
-        case 'signals':
-          newRow = {
-            id: `signal-${Date.now()}`,
-            signalType: 'New Signal',
-            person: 'New Person',
-            company: 'New Company',
-            date: new Date().toISOString().split('T')[0],
-            confidence: 'Medium',
-            source: 'https://news-source.com',
-            description: 'New signal description',
-            matchStatus: null
-          };
-          break;
-        case 'market':
-          newRow = {
-            id: `market-${Date.now()}`,
-            title: 'New Market Report',
-            publisher: 'New Publisher',
-            date: new Date().toISOString().split('T')[0],
-            region: 'New Region',
-            category: 'New Category',
-            pages: 0,
-            matchStatus: null
-          };
-          break;
-        case 'patents':
-          newRow = {
-            id: `patent-${Date.now()}`,
-            title: 'New Patent Title',
-            type: 'Patent',
-            inventor: 'New Inventor',
-            company: 'New Company',
-            dateFiled: new Date().toISOString().split('T')[0],
-            status: 'Filed',
-            matchStatus: null
-          };
-          break;
-        case 'research-papers':
-          newRow = {
-            id: `paper-${Date.now()}`,
-            title: 'New Research Paper Title',
-            authors: 'New Author',
-            journal: 'New Journal',
-            publicationDate: new Date().toISOString().split('T')[0],
-            citations: 0,
-            field: 'New Field',
-            matchStatus: null
-          };
-          break;
-      }
-
-      // Add custom columns to the new row
-      if (customColumns && customColumns[tab]) {
-        customColumns[tab].forEach(col => {
-          if (col.field) {
-            newRow[col.field] = '';
-          }
-        });
-      }
-
-      // Add the new row to the data
-      newResults[tab] = [...tabData, newRow];
+      const tabData = [...newResults[activeTab]];
+      newResults[activeTab] = [...tabData, newRow];
       return newResults;
     });
+  }, [activeTab, setResults]);
 
-    console.log(`Added new row to ${tab} tab`);
-  }, []);
+  const activeColumns = useMemo(
+    () => columnDefsByTab[activeTab] || [],
+    [activeTab, columnDefsByTab]
+  );
+  const activeDataColumns = useMemo(
+    () => getDataColumns(activeColumns),
+    [activeColumns]
+  );
+  const existingFields = useMemo(
+    () => getAllColumnFields(activeColumns),
+    [activeColumns]
+  );
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
@@ -1391,22 +1448,25 @@ export default function Page() {
           selectedRows={selectedRows}
           onSelectionChanged={handleSelectionChanged}
           onCellValueChanged={handleCellValueChanged}
-          onAddColumn={handleAddColumn}
-          onAddRow={() => handleAddRow(activeTab, setResults, customColumns)}
+          onAddColumn={() => setIsAddColumnOpen(true)}
+          onAddRow={() => setIsAddRowOpen(true)}
           onMatch={() => handleMatch(selectedRows, setResults, results, activeTab, setSelectedRows)}
           onNotMatch={() => handleNotMatch(selectedRows, setResults, results, activeTab, setSelectedRows)}
           onExport={handleExport}
-          customColumns={customColumns}
+          columnDefsByTab={columnDefsByTab}
           onColumnHeaderDoubleClick={(columnField, currentName) => {
-            // Only allow editing custom columns (those containing "Custom" in the name)
-            if (currentName.includes('Custom')) {
-              const newName = prompt('Enter new column name:', currentName);
-              if (newName && newName.trim() && newName !== currentName) {
-                handleColumnNameChange(activeTab, columnField, newName.trim());
-              }
+            const tabColumns = columnDefsByTab[activeTab] || [];
+            const column = tabColumns.find((col) => col.field === columnField);
+            if (!(column as CustomColDef)?.__isCustom) return;
+            const newName = prompt('Enter new column name:', currentName);
+            if (newName && newName.trim() && newName !== currentName) {
+              handleColumnNameChange(activeTab, columnField, newName.trim());
             }
           }}
-          setResults={setResults}
+          setSelectedRows={setSelectedRows}
+          setRowDataByTab={setResults}
+          setSearchProgress={setSearchProgress}
+          isContinuousSearchActiveRef={isContinuousSearchActiveRef}
           gridRef={gridRef}
           significanceMin={significanceMin}
           relevanceMin={relevanceMin}
@@ -1414,6 +1474,21 @@ export default function Page() {
           onRelevanceChange={handleRelevanceChange}
           getRowClass={getRowClass}
           searchProgress={searchProgress}
+        />
+
+        <AddColumnModal
+          open={isAddColumnOpen}
+          onOpenChange={setIsAddColumnOpen}
+          existingFields={existingFields}
+          onSubmit={handleAddColumnSubmit}
+        />
+
+        <AddRowModal
+          open={isAddRowOpen}
+          onOpenChange={setIsAddRowOpen}
+          columns={activeDataColumns}
+          rowData={rowDataByTab[activeTab] || []}
+          onSubmit={handleAddRowSubmit}
         />
       </main>
     </div>
