@@ -679,20 +679,26 @@ export default function Page() {
     const matchStatus = params.data?.matchStatus;
     const newlyAdded = params.data?.newlyAdded;
     const isSelected = params.node?.isSelected();
+    const isCompaniesTab = activeTab === 'companies';
+    const isPeopleTab = activeTab === 'people';
+    const isNewsTab = activeTab === 'news';
 
+    if (isPeopleTab || isNewsTab) {
+      return '';
+    }
     if (newlyAdded) {
       return 'row-newly-added';
-    } else if (isMatchActive && isSelected) {
+    } else if (!isCompaniesTab && isMatchActive && isSelected) {
       return 'row-selected-match'; // Light green background for selected rows when Match is active
-    } else if (matchStatus === 'match') {
+    } else if (!isCompaniesTab && matchStatus === 'match') {
       return 'row-match';
-    } else if (matchStatus === 'not-match') {
+    } else if (!isCompaniesTab && matchStatus === 'not-match') {
       return 'row-not-match';
     } else if (matchStatus === 'suggested') {
       return 'row-suggested';
     }
     return '';
-  }, [isMatchActive]); // Row background styling function
+  }, [activeTab, isMatchActive]); // Row background styling function
 
   // Calculate result counts per tab (use filtered results for news)
   const resultCounts = useMemo(() => ({
