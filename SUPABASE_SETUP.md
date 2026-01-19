@@ -20,9 +20,16 @@ Update your `.env.local` file with your actual values:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
-## 4. Set Up Google OAuth
+## 4. Apply the MVP Schema
+
+1. In Supabase Dashboard, go to SQL Editor → New query
+2. Paste the contents of `supabase/schema.sql`
+3. Run the query to create tables, triggers, and RLS policies
+
+## 5. Set Up Google OAuth
 
 1. In Supabase Dashboard, go to Authentication → Providers
 2. Enable Google provider
@@ -34,13 +41,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
    - Client ID: Your Google OAuth client ID
    - Client Secret: Your Google OAuth client secret
 
-## 5. Configure Redirect URLs
+## 6. Configure Redirect URLs
 
 In Supabase Auth settings, add your domain to the Site URL:
 - For development: `http://localhost:3000`
 - For production: `https://yourdomain.com`
 
-## 6. Test the Authentication
+## 7. Test the Authentication
 
 1. Start your development server: `npm run dev`
 2. Click "Sign In with Google" button
