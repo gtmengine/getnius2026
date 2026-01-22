@@ -32,14 +32,14 @@ import { ColDef } from 'ag-grid-community';
 import {
   ColumnKind,
   StoredColumnDef,
-  getRowDataStorageKey,
   loadStoredColumnDefs,
-  loadStoredRowData,
   saveStoredColumnDefs,
   saveStoredRowData,
 } from '@/lib/dynamicSchema';
 import { searchWithGoogle } from '@/lib/search-apis';
 import { downloadCSV, toCSV } from '@/lib/csv';
+import { PaywallModal } from '@/components/paywall/PaywallModal';
+import { SubscribeModal } from '@/components/paywall/SubscribeModal';
 
 // Icon map for tabs
 const iconMap = {
@@ -478,6 +478,7 @@ interface ResultsPanelProps {
   onRelevanceChange: (value: number) => void;
   getRowClass?: (params: any) => string;
   searchProgress?: string | null;
+  emptyMessage: string;
 }
 
 function ResultsPanel({ 
@@ -504,7 +505,8 @@ function ResultsPanel({
   onSignificanceChange,
   onRelevanceChange,
   getRowClass,
-  searchProgress
+  searchProgress,
+  emptyMessage
 }: ResultsPanelProps) {
   const columnDefs = useMemo(() => {
     return columnDefsByTab[activeTab] || [];
@@ -738,7 +740,7 @@ function ResultsPanel({
           onSelectionChanged={onSelectionChanged}
           onCellValueChanged={onCellValueChanged}
           onColumnHeaderDoubleClick={onColumnHeaderDoubleClick}
-          emptyMessage={`No ${activeTab} data available.`}
+          emptyMessage={emptyMessage}
           rowSelection="multiple"
           getRowClass={getRowClass}
         />
@@ -767,19 +769,13 @@ export default function Page() {
   const [rowDataByTab, setRowDataByTab] = useState<Record<TabId, any[]>>(() => {
     const map = {} as Record<TabId, any[]>;
     tabConfigs.forEach((tab) => {
-      if (typeof window === 'undefined') {
-        map[tab.id] = sampleDataMap[tab.id] || [];
-        return;
-      }
-      const storageKey = getRowDataStorageKey(tab.id);
-      const hasStored = localStorage.getItem(storageKey) !== null;
-      map[tab.id] = hasStored ? loadStoredRowData(tab.id) : (sampleDataMap[tab.id] || []);
+      map[tab.id] = [];
     });
     return map;
   });
   const [searchedTabs, setSearchedTabs] = useState<Record<TabId, boolean>>(() => {
     return tabConfigs.reduce((acc, tab) => {
-      acc[tab.id] = true;
+      acc[tab.id] = false;
       return acc;
     }, {} as Record<TabId, boolean>);
   });
@@ -792,6 +788,11 @@ export default function Page() {
   const isContinuousSearchActiveRef = useRef(false);
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [isAddRowOpen, setIsAddRowOpen] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
+  const [paywallArmedFor, setPaywallArmedFor] = useState<{ tab: TabId; token: number } | null>(null);
+  const paywallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const paywallTimerTokenRef = useRef<number | null>(null);
 
   // News filter states
   const [significanceMin, setSignificanceMin] = useState<number>(() => {
@@ -832,6 +833,43 @@ export default function Page() {
       saveStoredRowData(tab.id, rowDataByTab[tab.id] || []);
     });
   }, [rowDataByTab]);
+
+  useEffect(() => {
+    if (!isPaywallOpen && !isSubscribeOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isPaywallOpen, isSubscribeOpen]);
+
+  useEffect(() => {
+    if (!paywallArmedFor) return;
+
+    const { tab } = paywallArmedFor;
+    const tabResults = rowDataByTab[tab] || [];
+
+    if (tabResults.length === 0) return;
+    if (paywallTimerTokenRef.current === paywallArmedFor.token) return;
+
+    if (paywallTimerRef.current) {
+      clearTimeout(paywallTimerRef.current);
+    }
+
+    paywallTimerTokenRef.current = paywallArmedFor.token;
+    paywallTimerRef.current = setTimeout(() => {
+      setIsPaywallOpen(true);
+    }, 7000);
+
+    return () => {
+      if (paywallTimerRef.current) {
+        clearTimeout(paywallTimerRef.current);
+        paywallTimerRef.current = null;
+      }
+    };
+  }, [paywallArmedFor, rowDataByTab]);
 
   // Filter news data based on slider values
   const filteredNews = useMemo(() => {
@@ -891,6 +929,13 @@ export default function Page() {
     setIsSearching(true);
     setError(null);
     setSelectedRows([]);
+    setIsPaywallOpen(false);
+    setIsSubscribeOpen(false);
+    if (paywallTimerRef.current) {
+      clearTimeout(paywallTimerRef.current);
+      paywallTimerRef.current = null;
+    }
+    paywallTimerTokenRef.current = null;
 
     let nextResults: any[] = [];
 
@@ -929,6 +974,7 @@ export default function Page() {
       [activeTab]: true,
     }));
     setIsSearching(false);
+    setPaywallArmedFor({ tab: activeTab, token: Date.now() });
   }, [activeTab, query, setResults]);
   
   // Tab change handler
@@ -1377,6 +1423,10 @@ export default function Page() {
     () => getAllColumnFields(activeColumns),
     [activeColumns]
   );
+
+  const emptyMessage = searchedTabs[activeTab]
+    ? `No ${activeTab} data available.`
+    : 'Run a search to see results';
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
@@ -1474,6 +1524,7 @@ export default function Page() {
           onRelevanceChange={handleRelevanceChange}
           getRowClass={getRowClass}
           searchProgress={searchProgress}
+          emptyMessage={emptyMessage}
         />
 
         <AddColumnModal
@@ -1491,6 +1542,13 @@ export default function Page() {
           onSubmit={handleAddRowSubmit}
         />
       </main>
+
+      <PaywallModal
+        open={isPaywallOpen}
+        onClose={() => setIsPaywallOpen(false)}
+        onOpenSubscribe={() => setIsSubscribeOpen(true)}
+      />
+      <SubscribeModal open={isSubscribeOpen} onClose={() => setIsSubscribeOpen(false)} />
     </div>
   );
 }
