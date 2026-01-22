@@ -143,6 +143,22 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
 
   return (
     <div className={`ag-theme-quartz ${className}`} style={{ height, width: '100%' }}>
+      <style>{`
+        .ag-theme-quartz [col-id="select"] .ag-cell-wrapper {
+          justify-content: flex-start !important;
+          padding-left: 8px !important;
+        }
+        .ag-theme-quartz [col-id="select"] .ag-selection-checkbox {
+          margin-left: 0 !important;
+        }
+        .ag-theme-quartz [col-id="ag-Grid-SelectionColumn"] .ag-cell-wrapper {
+          justify-content: flex-start !important;
+          padding-left: 8px !important;
+        }
+        .ag-theme-quartz [col-id="ag-Grid-SelectionColumn"] .ag-selection-checkbox {
+          margin-left: 0 !important;
+        }
+      `}</style>
       <AgGridReact
         ref={gridRef}
         theme={customTheme}

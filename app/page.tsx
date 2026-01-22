@@ -342,7 +342,6 @@ function ResultsToolbar({
           >
             <Check className="w-3.5 h-3.5" />
             Match
-            {isMatchPaintActive && <span className="text-xs ml-1">🎨</span>}
           </button>
           <button
             onClick={onNotMatch}
@@ -356,7 +355,6 @@ function ResultsToolbar({
           >
             <X className="w-3.5 h-3.5" />
             Not Match
-            {isNotMatchPaintActive && <span className="text-xs ml-1">🎨</span>}
           </button>
         </div>
         

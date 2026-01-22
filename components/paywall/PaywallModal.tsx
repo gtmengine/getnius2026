@@ -165,36 +165,46 @@ export function PaywallModal({ open, onClose, onOpenSubscribe }: PaywallModalPro
 
           <div className="py-6 sm:py-7">
             <div className="flex flex-col items-center gap-3">
-              <button
-                type="button"
-                className="mx-auto flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors transition-shadow motion-safe:duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:w-auto sm:min-w-[280px]"
-              >
-                <span className="flex h-5 w-5 items-center justify-center">
-                  <svg
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                    className="h-5 w-5"
-                  >
-                    <path
-                      d="M23.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h6.5c-.3 1.6-1.2 2.9-2.5 3.8v3h4c2.3-2.1 3.5-5.2 3.5-8.8z"
-                      fill="#4285F4"
-                    />
-                    <path
-                      d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-4-3c-1.1.7-2.5 1.1-3.9 1.1-3 0-5.5-2-6.4-4.7H1.4v3.1C3.4 21.5 7.4 24 12 24z"
-                      fill="#34A853"
-                    />
-                    <path
-                      d="M5.6 14.5c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3V6.8H1.4C.5 8.6 0 10.6 0 12.2s.5 3.6 1.4 5.4l4.2-3.1z"
-                      fill="#FBBC05"
-                    />
-                    <path
-                      d="M12 4.7c1.7 0 3.3.6 4.5 1.7l3.3-3.3C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.5 1.4 6.8l4.2 3.1C6.5 6.7 9 4.7 12 4.7z"
-                      fill="#EA4335"
-                    />
-                  </svg>
-                </span>
-                <span>Sign in with Google</span>
-              </button>
+              <div className="flex w-full flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors transition-shadow motion-safe:duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:w-auto sm:min-w-[280px]"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center">
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      className="h-5 w-5"
+                    >
+                      <path
+                        d="M23.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h6.5c-.3 1.6-1.2 2.9-2.5 3.8v3h4c2.3-2.1 3.5-5.2 3.5-8.8z"
+                        fill="#4285F4"
+                      />
+                      <path
+                        d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-4-3c-1.1.7-2.5 1.1-3.9 1.1-3 0-5.5-2-6.4-4.7H1.4v3.1C3.4 21.5 7.4 24 12 24z"
+                        fill="#34A853"
+                      />
+                      <path
+                        d="M5.6 14.5c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3V6.8H1.4C.5 8.6 0 10.6 0 12.2s.5 3.6 1.4 5.4l4.2-3.1z"
+                        fill="#FBBC05"
+                      />
+                      <path
+                        d="M12 4.7c1.7 0 3.3.6 4.5 1.7l3.3-3.3C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.5 1.4 6.8l4.2 3.1C6.5 6.7 9 4.7 12 4.7z"
+                        fill="#EA4335"
+                      />
+                    </svg>
+                  </span>
+                  <span>Sign in with Google</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenSubscribe}
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors transition-shadow motion-safe:duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:w-auto sm:min-w-[280px]"
+                >
+                  <Mail className="h-5 w-5 text-slate-700" />
+                  <span>Subscribe with Email</span>
+                </button>
+              </div>
               <p className="text-center text-xs text-slate-500">
                 Secure authentication • No credit card required
               </p>

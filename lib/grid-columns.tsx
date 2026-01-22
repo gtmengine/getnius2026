@@ -10,13 +10,16 @@ export const selectCol = (): ColDef => ({
   lockPinned: true,
   lockPosition: true,
   suppressMovable: true,
-  width: 48,
-  minWidth: 48,
-  maxWidth: 48,
+  suppressColumnsToolPanel: true,
+  width: 40,
+  minWidth: 40,
+  maxWidth: 40,
   suppressSizeToFit: true,
   resizable: false,
   sortable: false,
   filter: false,
+  cellStyle: { paddingLeft: '8px', paddingRight: '0px' },
+  headerClass: 'ag-left-aligned-header',
 });
 
 // Editable Header Component for AG Grid
@@ -116,9 +119,9 @@ const withCellMatchStatus = (CellContent: React.ReactNode, params: any) => {
   if (!config) return CellContent;
 
   return (
-    <div className="flex items-center gap-2 w-full">
+    <div className="flex items-center gap-1.5 w-full">
       <span
-        className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${config.className}`}
+        className={`inline-flex items-center justify-center w-3 h-3 rounded-full text-[10px] font-bold ${config.className}`}
         role="status"
         aria-label={`Cell marked as ${cellMatchStatus === 'match' ? 'Match' : 'Not Match'}`}
         title={cellMatchStatus === 'match' ? 'Match' : 'Not Match'}
