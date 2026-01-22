@@ -40,6 +40,7 @@ import { searchWithGoogle } from '@/lib/search-apis';
 import { downloadCSV, toCSV } from '@/lib/csv';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { SubscribeModal } from '@/components/paywall/SubscribeModal';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 // Icon map for tabs
 const iconMap = {
@@ -300,6 +301,7 @@ interface ResultsToolbarProps {
   relevanceMin: number;
   onSignificanceChange: (value: number) => void;
   onRelevanceChange: (value: number) => void;
+  paintMode: 'match' | 'not-match' | null;
 }
 
 function ResultsToolbar({ 
@@ -316,30 +318,45 @@ function ResultsToolbar({
   significanceMin,
   relevanceMin,
   onSignificanceChange,
-  onRelevanceChange
+  onRelevanceChange,
+  paintMode
 }: ResultsToolbarProps) {
   const hasSelection = selectedCount > 0;
+  const isMatchPaintActive = paintMode === 'match';
+  const isNotMatchPaintActive = paintMode === 'not-match';
   
   return (
     <div className="flex items-center justify-between py-3 px-1">
       <div className="flex items-center gap-2">
-        {/* Match / Not Match toggles */}
+        {/* Match / Not Match toggles - Paint Mode */}
         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
           <button
             onClick={onMatch}
-            disabled={!hasSelection}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm text-green-700"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
+              isMatchPaintActive 
+                ? 'bg-green-100 text-green-800 shadow-sm border-2 border-green-500' 
+                : 'text-green-700'
+            }`}
+            aria-label={isMatchPaintActive ? 'Paint mode active: Click cells to mark as Match' : 'Activate Match paint mode'}
+            aria-pressed={isMatchPaintActive}
           >
             <Check className="w-3.5 h-3.5" />
             Match
+            {isMatchPaintActive && <span className="text-xs ml-1">🎨</span>}
           </button>
           <button
             onClick={onNotMatch}
-            disabled={!hasSelection}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white hover:shadow-sm text-red-600"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 ${
+              isNotMatchPaintActive 
+                ? 'bg-red-100 text-red-800 shadow-sm border-2 border-red-500' 
+                : 'text-red-600'
+            }`}
+            aria-label={isNotMatchPaintActive ? 'Paint mode active: Click cells to mark as Not Match' : 'Activate Not Match paint mode'}
+            aria-pressed={isNotMatchPaintActive}
           >
             <X className="w-3.5 h-3.5" />
             Not Match
+            {isNotMatchPaintActive && <span className="text-xs ml-1">🎨</span>}
           </button>
         </div>
         
@@ -349,25 +366,31 @@ function ResultsToolbar({
         <button
           onClick={onFindLookalikes}
           disabled={!hasSelection}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+          aria-label={`Find lookalikes for ${selectedCount} selected rows`}
+          aria-disabled={!hasSelection}
         >
           <Copy className="w-3.5 h-3.5" />
           Find Lookalikes
         </button>
-        
+
         <button
           onClick={onEnrich}
           disabled={!hasSelection}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+          aria-label={`Enrich ${selectedCount} selected rows`}
+          aria-disabled={!hasSelection}
         >
           <Sparkles className="w-3.5 h-3.5" />
           Enrich
         </button>
-        
+
         <button
           onClick={onDelete}
           disabled={!hasSelection}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+          aria-label={`Delete ${selectedCount} selected rows`}
+          aria-disabled={!hasSelection}
         >
           <Trash2 className="w-3.5 h-3.5" />
           Delete
@@ -479,6 +502,8 @@ interface ResultsPanelProps {
   getRowClass?: (params: any) => string;
   searchProgress?: string | null;
   emptyMessage: string;
+  onCellClicked?: (event: any) => void;
+  paintMode: 'match' | 'not-match' | null;
 }
 
 function ResultsPanel({ 
@@ -488,6 +513,7 @@ function ResultsPanel({
   selectedRows,
   onSelectionChanged,
   onCellValueChanged,
+  onCellClicked,
   onAddColumn,
   onAddRow,
   onMatch,
@@ -506,7 +532,8 @@ function ResultsPanel({
   onRelevanceChange,
   getRowClass,
   searchProgress,
-  emptyMessage
+  emptyMessage,
+  paintMode
 }: ResultsPanelProps) {
   const columnDefs = useMemo(() => {
     return columnDefsByTab[activeTab] || [];
@@ -514,8 +541,90 @@ function ResultsPanel({
   const rowData = useMemo(() => results[activeTab] || [], [results, activeTab]);
   
   
+  // Generate 3-8 derived search queries from selected news rows
+  const generateNewsSearchQueries = useCallback((selectedRows: any[]): string[] => {
+    const queries: string[] = [];
+    const fingerprints: Array<{title: string, snippet: string, company: string, source: string}> = [];
+
+    // Extract fingerprints from selected rows
+    selectedRows.forEach(row => {
+      fingerprints.push({
+        title: row.title || '',
+        snippet: row.summary || row.snippet || '',
+        company: row.company || '',
+        source: row.source || ''
+      });
+    });
+
+    // Generate derived queries deterministically
+    const companies = [...new Set(fingerprints.map(fp => fp.company).filter(c => c))];
+    const sources = [...new Set(fingerprints.map(fp => fp.source).filter(s => s))];
+
+    // Query 1: Company-focused search
+    if (companies.length > 0) {
+      queries.push(`${companies.join(' OR ')} news`);
+    }
+
+    // Query 2: Source-focused search
+    if (sources.length > 0) {
+      queries.push(`${sources.join(' OR ')} articles`);
+    }
+
+    // Query 3: Combined company + key terms from titles
+    const titleKeywords = fingerprints
+      .flatMap(fp => fp.title.split(' '))
+      .filter(word => word.length > 3) // Filter out short words
+      .filter(word => !['news', 'update', 'report', 'announces', 'launches', 'reveals', 'says'].includes(word.toLowerCase()))
+      .slice(0, 5); // Take top 5 keywords
+
+    if (companies.length > 0 && titleKeywords.length > 0) {
+      queries.push(`${companies[0]} ${titleKeywords.slice(0, 3).join(' ')} news`);
+    }
+
+    // Query 4: Snippet-based search (extract key phrases)
+    const snippetKeywords = fingerprints
+      .flatMap(fp => fp.snippet.split(' '))
+      .filter(word => word.length > 4)
+      .filter(word => !word.includes('http'))
+      .slice(0, 4);
+
+    if (snippetKeywords.length > 0) {
+      queries.push(`${snippetKeywords.join(' ')} business news`);
+    }
+
+    // Query 5: Company + source combination
+    if (companies.length > 0 && sources.length > 0) {
+      queries.push(`${companies[0]} ${sources[0]} news`);
+    }
+
+    // Query 6: Recent news about companies
+    if (companies.length > 1) {
+      queries.push(`${companies.slice(0, 2).join(' ')} latest news`);
+    }
+
+    // Query 7: Industry context
+    const industryTerms = ['startup', 'funding', 'investment', 'acquisition', 'partnership', 'expansion', 'growth'];
+    if (companies.length > 0) {
+      queries.push(`${companies[0]} ${industryTerms[Math.floor(Math.random() * industryTerms.length)]} news`);
+    }
+
+    // Query 8: Broader market context
+    if (companies.length > 0) {
+      queries.push(`${companies[0]} market news`);
+    }
+
+    // Ensure we have at least 3 queries and at most 8
+    const finalQueries = queries.slice(0, 8);
+    return finalQueries.length >= 3 ? finalQueries : queries.slice(0, Math.max(3, queries.length));
+  }, []);
+
   const handleFindLookalikes = useCallback(async (selectedRows: any[], setResultsFn: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>, results: Record<TabId, any[]>, activeTab: TabId, setSelectedRows: React.Dispatch<React.SetStateAction<any[]>>) => {
     console.log('Finding lookalikes for:', selectedRows);
+
+    if (selectedRows.length === 0) {
+      console.log('No rows selected, returning early');
+      return;
+    }
 
     // Toggle continuous search mode
     if (isContinuousSearchActiveRef.current) {
@@ -525,7 +634,153 @@ function ResultsPanel({
       return;
     }
 
-    // For news tab, Find Lookalikes works together with Match
+    // Perform the lookalikes search functionality
+    // Generate search queries based on selected rows for all tabs except news
+    let searchQueries: string[] = [];
+
+    try {
+      if (activeTab !== 'news') {
+        switch (activeTab) {
+          case 'companies':
+            // Use company names and descriptions as search terms
+            const companyQuery = selectedRows.map(row =>
+              `${row.name} ${row.description}`.substring(0, 100)
+            ).join(' OR ');
+            searchQueries = [companyQuery];
+            break;
+
+          case 'people':
+            // Use person names, roles, and companies
+            const peopleQuery = selectedRows.map(row =>
+              `${row.name} ${row.role} ${row.company}`.substring(0, 100)
+            ).join(' OR ');
+            searchQueries = [peopleQuery];
+            break;
+
+          case 'signals':
+            // Use signal descriptions and companies
+            const signalsQuery = selectedRows.map(row =>
+              `${row.description} ${row.company}`.substring(0, 100)
+            ).join(' OR ');
+            searchQueries = [signalsQuery];
+            break;
+
+          default:
+            // Fallback for other tabs
+            const fallbackQuery = selectedRows.map(row =>
+              Object.values(row).filter(val => typeof val === 'string').join(' ')
+            ).join(' OR ');
+            searchQueries = [fallbackQuery];
+        }
+
+        if (searchQueries.length === 0 || searchQueries.every(q => !q.trim())) {
+          console.warn('No search queries could be generated from selected rows');
+          setSelectedRows([]);
+          return;
+        }
+
+        console.log(`Searching for similar ${activeTab} based on selected examples:`, searchQueries);
+
+        // Run multiple search queries and combine results with progress
+        const allSearchResults: any[] = [];
+        let completedQueries = 0;
+
+        for (let i = 0; i < searchQueries.length; i++) {
+          const query = searchQueries[i];
+          if (query.trim()) {
+            try {
+              setSearchProgress(`Searching lookalikes (${completedQueries + 1}/${searchQueries.length} queries)...`);
+              const results = await searchWithGoogle(query.trim());
+              allSearchResults.push(...results);
+              completedQueries++;
+            } catch (error) {
+              console.warn(`Search failed for query "${query}":`, error);
+              completedQueries++;
+            }
+          }
+        }
+
+        setSearchProgress(null); // Clear progress when done
+
+        const searchResults = allSearchResults;
+
+        // Transform and append results
+        setResultsFn(prevResults => {
+          const newResults = { ...prevResults };
+          const existingData = [...newResults[activeTab]];
+
+          // Transform API results based on tab type
+          let transformedResults: any[] = [];
+
+          if (activeTab === 'companies') {
+            transformedResults = searchResults.map((company: any, index: number) => ({
+              id: company.id || `company-match-${Date.now()}-${index}`,
+              name: company.name,
+              description: company.description,
+              location: company.location || 'N/A',
+              founded: company.founded || 'N/A',
+              employees: company.employees || 'N/A',
+              status: company.status === 'validated' ? 'Active' : 'Pending',
+              revenue: company.funding || 'N/A',
+              people: 0,
+              news: 0,
+              matchStatus: null,
+              newlyAdded: true
+            }));
+          } else if (activeTab === 'people') {
+            transformedResults = searchResults.map((person: any, index: number) => ({
+              id: person.id || `person-match-${Date.now()}-${index}`,
+              name: person.name,
+              company: person.company,
+              role: person.role,
+              location: person.location || 'N/A',
+              email: person.email || 'N/A',
+              matchStatus: null,
+              intents: 0,
+              newlyAdded: true
+            }));
+          }
+
+          // Add transformed results to existing data
+          newResults[activeTab] = [...existingData, ...transformedResults];
+          return newResults;
+        });
+
+        // Clear newlyAdded flag after a delay for visual feedback
+        setTimeout(() => {
+          setResultsFn(prevResults => {
+            const updatedResults = { ...prevResults };
+            const tabData = [...updatedResults[activeTab]];
+            tabData.forEach(row => {
+              if (row.newlyAdded) {
+                delete row.newlyAdded;
+              }
+            });
+            updatedResults[activeTab] = tabData;
+            return updatedResults;
+          });
+        }, 3000);
+
+      }
+    } catch (error) {
+      console.error('Error finding lookalikes:', error);
+      // Fallback to just marking selected rows as matches
+      setResultsFn(prevResults => {
+        const newResults = { ...prevResults };
+        const tabData = [...newResults[activeTab]];
+
+        selectedRows.forEach(selectedRow => {
+          const rowIndex = tabData.findIndex(row => row.id === selectedRow.id);
+          if (rowIndex !== -1) {
+            tabData[rowIndex] = { ...tabData[rowIndex], matchStatus: 'match' as const };
+          }
+        });
+
+        newResults[activeTab] = tabData;
+        return newResults;
+      });
+    }
+
     if (activeTab === 'news' && selectedRows.length > 0) {
       console.log('Starting continuous news lookalikes search');
       isContinuousSearchActiveRef.current = true;
@@ -680,12 +935,11 @@ function ResultsPanel({
       // Start the continuous search
       runContinuousSearch();
 
-    } else {
-      // For other tabs or general lookalikes functionality
-      console.log('General lookalikes functionality not yet implemented');
-      setSelectedRows([]);
     }
-  }, [activeTab, results]);
+
+    // Clear selection after operation
+    setSelectedRows([]);
+  }, [activeTab, results, isContinuousSearchActiveRef, setSearchProgress, generateNewsSearchQueries]);
   
   const handleEnrich = () => {
     console.log('Enriching:', selectedRows);
@@ -726,6 +980,7 @@ function ResultsPanel({
           relevanceMin={relevanceMin}
           onSignificanceChange={onSignificanceChange}
           onRelevanceChange={onRelevanceChange}
+          paintMode={paintMode}
         />
       </div>
       
@@ -739,9 +994,10 @@ function ResultsPanel({
           loading={isSearching}
           onSelectionChanged={onSelectionChanged}
           onCellValueChanged={onCellValueChanged}
+          onCellClicked={onCellClicked}
           onColumnHeaderDoubleClick={onColumnHeaderDoubleClick}
           emptyMessage={emptyMessage}
-          rowSelection="multiple"
+          rowSelection={{ mode: 'multiRow', checkboxes: true, headerCheckbox: true }}
           getRowClass={getRowClass}
         />
       </div>
@@ -785,11 +1041,13 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [searchProgress, setSearchProgress] = useState<string | null>(null);
   const [isMatchActive, setIsMatchActive] = useState(false);
+  const [paintMode, setPaintMode] = useState<'match' | 'not-match' | null>(null);
   const isContinuousSearchActiveRef = useRef(false);
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [isAddRowOpen, setIsAddRowOpen] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
+  const [isConfirmNotMatchOpen, setIsConfirmNotMatchOpen] = useState(false);
   const [paywallArmedFor, setPaywallArmedFor] = useState<{ tab: TabId; token: number } | null>(null);
   const paywallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const paywallTimerTokenRef = useRef<number | null>(null);
@@ -1091,292 +1349,57 @@ export default function Page() {
     });
   }, [activeTab, setColumnDefsByTab, setResults]);
 
-  // Match/Not Match handlers
-  const handleMatch = useCallback(async (selectedRows: any[], setResultsFn: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>, results: Record<TabId, any[]>, activeTab: TabId, setSelectedRows: React.Dispatch<React.SetStateAction<any[]>>) => {
-    console.log('handleMatch called with:', selectedRows.length, 'selected rows for tab:', activeTab);
-    if (selectedRows.length === 0) {
-      console.log('No rows selected, returning early');
-      return;
-    }
 
-    // Set Match active state for visual feedback
-    setIsMatchActive(true);
-
-    try {
-      // Generate search queries based on selected rows
-      let searchQueries: string[] = [];
-
-      switch (activeTab) {
-        case 'companies':
-          // Use company names and descriptions as search terms
-          const companyQuery = selectedRows.map(row =>
-            `${row.name} ${row.description}`.substring(0, 100)
-          ).join(' OR ');
-          searchQueries = [companyQuery];
-          break;
-
-        case 'news':
-          // Extract fingerprints and generate 3-8 derived queries deterministically
-          searchQueries = generateNewsSearchQueries(selectedRows);
-          break;
-
-        case 'people':
-          // Use person names, roles, and companies
-          const peopleQuery = selectedRows.map(row =>
-            `${row.name} ${row.role} ${row.company}`.substring(0, 100)
-          ).join(' OR ');
-          searchQueries = [peopleQuery];
-          break;
-
-        case 'signals':
-          // Use signal descriptions and companies
-          const signalsQuery = selectedRows.map(row =>
-            `${row.description} ${row.company}`.substring(0, 100)
-          ).join(' OR ');
-          searchQueries = [signalsQuery];
-          break;
-
-        default:
-          // Fallback for other tabs
-          const fallbackQuery = selectedRows.map(row =>
-            Object.values(row).filter(val => typeof val === 'string').join(' ')
-          ).join(' OR ');
-          searchQueries = [fallbackQuery];
-      }
-
-      if (searchQueries.length === 0 || searchQueries.every(q => !q.trim())) {
-        console.warn('No search queries could be generated from selected rows');
-        return;
-      }
-
-      console.log(`Searching for similar ${activeTab} based on selected examples:`, searchQueries);
-
-      // Run multiple search queries and combine results with progress
-      const allSearchResults: any[] = [];
-      let completedQueries = 0;
-
-      for (let i = 0; i < searchQueries.length; i++) {
-        const query = searchQueries[i];
-        if (query.trim()) {
-          try {
-            setSearchProgress(`Searching lookalikes (${completedQueries + 1}/${searchQueries.length} queries)...`);
-            const results = await searchWithGoogle(query.trim());
-            allSearchResults.push(...results);
-            completedQueries++;
-          } catch (error) {
-            console.warn(`Search failed for query "${query}":`, error);
-            completedQueries++;
-          }
-        }
-      }
-
-      setSearchProgress(null); // Clear progress when done
-
-      const searchResults = allSearchResults;
-
-      // Transform and append results
-      setResultsFn(prevResults => {
-        const newResults = { ...prevResults };
-        const existingData = [...newResults[activeTab]];
-
-        // Mark selected rows as positive matches
-        selectedRows.forEach(selectedRow => {
-          const rowIndex = existingData.findIndex(row => row.id === selectedRow.id);
-          if (rowIndex !== -1) {
-            existingData[rowIndex] = { ...existingData[rowIndex], matchStatus: 'match' as const };
-          }
-        });
-
-        // Transform API results based on tab type
-        let transformedResults: any[] = [];
-
-        if (activeTab === 'companies') {
-          transformedResults = searchResults.map((company: any, index: number) => ({
-            id: company.id || `company-match-${Date.now()}-${index}`,
-            name: company.name,
-            description: company.description,
-            location: company.location || 'N/A',
-            founded: company.founded || 'N/A',
-            employees: company.employees || 'N/A',
-            status: company.status === 'validated' ? 'Active' : 'Pending',
-            revenue: company.funding || 'N/A',
-            people: Math.floor(Math.random() * 10),
-            news: Math.floor(Math.random() * 8),
-            logo: company.logo || '/placeholder.svg',
-            matchStatus: 'suggested' as const
-          }));
-        } else if (activeTab === 'news') {
-          // For news tab, set Status = "New" and Match = "Match" with enrichment and scoring
-          transformedResults = searchResults.map((newsItem: any, index: number) => ({
-            id: newsItem.id || `news-match-${Date.now()}-${index}`,
-            title: newsItem.title || newsItem.headline || '',
-            summary: newsItem.summary || newsItem.snippet || newsItem.description || '',
-            company: newsItem.company || '',
-            source: newsItem.source || newsItem.publisher || '',
-            date: newsItem.date || newsItem.publishedAt || new Date().toISOString(),
-            url: newsItem.url || '',
-            status: 'New', // Set Status = "New" for derived news rows
-            matchStatus: 'match' as const, // Set Match = "Match" for derived news rows
-            // MVP enrichment and scoring
-            significance_score: Math.round((Math.random() * 4 + 6) * 10) / 10, // 6.0-10.0 range
-            relevance_score: Math.round((Math.random() * 3 + 7) * 10) / 10, // 7.0-10.0 range
-            newlyAdded: true // Flag for highlighting newly added rows
-          }));
-        } else {
-          // For other tabs, add suggested results with basic transformation
-          // In a full implementation, you'd have specific transformations for each tab
-          transformedResults = searchResults.map((result: any, index: number) => ({
-            id: `${activeTab}-suggested-${Date.now()}-${index}`,
-            ...result,
-            matchStatus: 'suggested' as const
-          }));
-        }
-
-        // Remove duplicates based on name/title (simple deduplication)
-        const existingNames = new Set(existingData.map(row =>
-          activeTab === 'companies' ? row.name :
-          activeTab === 'news' ? row.title :
-          activeTab === 'people' ? row.name :
-          row.id
-        ));
-
-        const uniqueResults = transformedResults.filter(result => {
-          const identifier = activeTab === 'companies' ? result.name :
-                           activeTab === 'news' ? result.title :
-                           activeTab === 'people' ? result.name :
-                           result.id;
-          return !existingNames.has(identifier);
-        });
-
-        newResults[activeTab] = [...existingData, ...uniqueResults];
-
-        const resultType = activeTab === 'news' ? 'new news items' : 'suggested matches';
-        console.log(`Added ${uniqueResults.length} ${resultType} to ${activeTab} tab (${searchQueries.length} queries executed)`);
-
-        // Clear newlyAdded flag after 3 seconds for highlighting
-        if (uniqueResults.some(row => row.newlyAdded)) {
-          setTimeout(() => {
-            setResultsFn(prevResults => {
-              const updatedResults = { ...prevResults };
-              const tabData = [...updatedResults[activeTab]];
-              tabData.forEach(row => {
-                if (row.newlyAdded) {
-                  delete row.newlyAdded;
-                }
-              });
-              updatedResults[activeTab] = tabData;
-              return updatedResults;
-            });
-          }, 3000);
-        }
-
-        return newResults;
-      });
-
-    } catch (error) {
-      console.error('Error finding matches:', error);
-      // Fallback to just marking selected rows as matches
-      setResultsFn(prevResults => {
-        const newResults = { ...prevResults };
-        const tabData = [...newResults[activeTab]];
-
-        selectedRows.forEach(selectedRow => {
-          const rowIndex = tabData.findIndex(row => row.id === selectedRow.id);
-          if (rowIndex !== -1) {
-            tabData[rowIndex] = { ...tabData[rowIndex], matchStatus: 'match' as const };
-          }
-        });
-
-        newResults[activeTab] = tabData;
-        return newResults;
-      });
-    }
-
-    // Clear selection and match active state after operation
-    setSelectedRows([]);
-    setIsMatchActive(false);
+  // Paint Mode Toggle Handlers
+  const toggleMatchPaintMode = useCallback(() => {
+    setPaintMode(prev => prev === 'match' ? null : 'match');
   }, []);
 
-  // Generate 3-8 derived search queries from selected news rows
-  const generateNewsSearchQueries = useCallback((selectedRows: any[]): string[] => {
-    const queries: string[] = [];
-    const fingerprints: Array<{title: string, snippet: string, company: string, source: string}> = [];
+  const toggleNotMatchPaintMode = useCallback(() => {
+    setPaintMode(prev => prev === 'not-match' ? null : 'not-match');
+  }, []);
 
-    // Extract fingerprints from selected rows
-    selectedRows.forEach(row => {
-      fingerprints.push({
-        title: row.title || '',
-        snippet: row.summary || row.snippet || '',
-        company: row.company || '',
-        source: row.source || ''
-      });
+  // Cell Click Handler for Paint Mode - marks individual CELLS, not rows
+  const handleCellClicked = useCallback((event: any) => {
+    if (!paintMode || !event.data || !event.colDef) return;
+    
+    const rowData = event.data;
+    const cellField = event.colDef.field;
+    const matchStatus: 'match' | 'not-match' = paintMode === 'match' ? 'match' : 'not-match';
+    
+    // Skip if clicking on special columns (checkbox, actions, etc.)
+    if (!cellField || cellField === 'actions' || cellField === 'select') return;
+    
+    setResults(prevResults => {
+      const newResults = { ...prevResults };
+      const tabData = [...newResults[activeTab]];
+      
+      const rowIndex = tabData.findIndex(row => row.id === rowData.id);
+      if (rowIndex !== -1) {
+        // Store cell-level match status as __cellMatchStatus__
+        const cellMatchStatus = tabData[rowIndex].__cellMatchStatus__ || {};
+        tabData[rowIndex] = { 
+          ...tabData[rowIndex], 
+          __cellMatchStatus__: {
+            ...cellMatchStatus,
+            [cellField]: matchStatus
+          }
+        };
+      }
+      
+      newResults[activeTab] = tabData;
+      return newResults;
     });
-
-    // Generate derived queries deterministically
-    const companies = [...new Set(fingerprints.map(fp => fp.company).filter(c => c))];
-    const sources = [...new Set(fingerprints.map(fp => fp.source).filter(s => s))];
-
-    // Query 1: Company-focused search
-    if (companies.length > 0) {
-      queries.push(`${companies.join(' OR ')} news`);
-    }
-
-    // Query 2: Source-focused search
-    if (sources.length > 0) {
-      queries.push(`${sources.join(' OR ')} articles`);
-    }
-
-    // Query 3: Combined company + key terms from titles
-    const titleKeywords = fingerprints
-      .flatMap(fp => fp.title.split(' '))
-      .filter(word => word.length > 3) // Filter out short words
-      .filter(word => !['news', 'update', 'report', 'announces', 'launches', 'reveals', 'says'].includes(word.toLowerCase()))
-      .slice(0, 5); // Take top 5 keywords
-
-    if (companies.length > 0 && titleKeywords.length > 0) {
-      queries.push(`${companies[0]} ${titleKeywords.slice(0, 3).join(' ')} news`);
-    }
-
-    // Query 4: Snippet-based search (extract key phrases)
-    const snippetKeywords = fingerprints
-      .flatMap(fp => fp.snippet.split(' '))
-      .filter(word => word.length > 4)
-      .filter(word => !word.includes('http'))
-      .slice(0, 4);
-
-    if (snippetKeywords.length > 0) {
-      queries.push(`${snippetKeywords.join(' ')} business news`);
-    }
-
-    // Query 5: Company + source combination
-    if (companies.length > 0 && sources.length > 0) {
-      queries.push(`${companies[0]} ${sources[0]} news`);
-    }
-
-    // Query 6: Recent news about companies
-    if (companies.length > 1) {
-      queries.push(`${companies.slice(0, 2).join(' ')} latest news`);
-    }
-
-    // Query 7: Industry context
-    const industryTerms = ['startup', 'funding', 'investment', 'acquisition', 'partnership', 'expansion', 'growth'];
-    if (companies.length > 0) {
-      queries.push(`${companies[0]} ${industryTerms[Math.floor(Math.random() * industryTerms.length)]} news`);
-    }
-
-    // Query 8: Broader market context
-    if (companies.length > 0) {
-      queries.push(`${companies[0]} market news`);
-    }
-
-    // Ensure we have at least 3 queries and at most 8
-    const finalQueries = queries.slice(0, 8);
-    return finalQueries.length >= 3 ? finalQueries : queries.slice(0, Math.max(3, queries.length));
-  }, []);
+  }, [paintMode, activeTab, setResults]);
 
   const handleNotMatch = useCallback((selectedRows: any[], setResultsFn: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>, results: Record<TabId, any[]>, activeTab: TabId, setSelectedRows: React.Dispatch<React.SetStateAction<any[]>>) => {
     if (selectedRows.length === 0) return;
 
+    // Show confirmation dialog for Not Match (destructive action)
+    setIsConfirmNotMatchOpen(true);
+  }, []);
+
+  const handleConfirmNotMatch = useCallback((selectedRows: any[], setResultsFn: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>, _results: Record<TabId, any[]>, activeTab: TabId, setSelectedRows: React.Dispatch<React.SetStateAction<any[]>>) => {
     setResultsFn(prevResults => {
       const newResults = { ...prevResults };
       const tabData = [...newResults[activeTab]];
@@ -1498,10 +1521,11 @@ export default function Page() {
           selectedRows={selectedRows}
           onSelectionChanged={handleSelectionChanged}
           onCellValueChanged={handleCellValueChanged}
+          onCellClicked={handleCellClicked}
           onAddColumn={() => setIsAddColumnOpen(true)}
           onAddRow={() => setIsAddRowOpen(true)}
-          onMatch={() => handleMatch(selectedRows, setResults, results, activeTab, setSelectedRows)}
-          onNotMatch={() => handleNotMatch(selectedRows, setResults, results, activeTab, setSelectedRows)}
+          onMatch={toggleMatchPaintMode}
+          onNotMatch={toggleNotMatchPaintMode}
           onExport={handleExport}
           columnDefsByTab={columnDefsByTab}
           onColumnHeaderDoubleClick={(columnField, currentName) => {
@@ -1525,6 +1549,7 @@ export default function Page() {
           getRowClass={getRowClass}
           searchProgress={searchProgress}
           emptyMessage={emptyMessage}
+          paintMode={paintMode}
         />
 
         <AddColumnModal
@@ -1549,6 +1574,17 @@ export default function Page() {
         onOpenSubscribe={() => setIsSubscribeOpen(true)}
       />
       <SubscribeModal open={isSubscribeOpen} onClose={() => setIsSubscribeOpen(false)} />
+
+      <ConfirmDialog
+        open={isConfirmNotMatchOpen}
+        onOpenChange={setIsConfirmNotMatchOpen}
+        title="Mark as Not Match"
+        description={`Are you sure you want to mark ${selectedRows.length} selected ${selectedRows.length === 1 ? 'row' : 'rows'} as "Not Match"? This action will update their status in the pipeline.`}
+        confirmText="Mark as Not Match"
+        cancelText="Cancel"
+        onConfirm={() => handleConfirmNotMatch(selectedRows, setResults, results, activeTab, setSelectedRows)}
+        variant="destructive"
+      />
     </div>
   );
 }

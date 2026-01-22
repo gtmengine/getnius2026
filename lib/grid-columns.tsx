@@ -10,8 +10,6 @@ export const selectCol = (): ColDef => ({
   lockPinned: true,
   lockPosition: true,
   suppressMovable: true,
-  checkboxSelection: true,
-  headerCheckboxSelection: true,
   width: 48,
   minWidth: 48,
   maxWidth: 48,
@@ -94,6 +92,50 @@ const EditableHeaderComponent = (props: any) => {
   );
 };
 
+// Cell-level Match Status Badge Wrapper
+// Wraps any cell content with a match/not-match badge indicator
+const withCellMatchStatus = (CellContent: React.ReactNode, params: any) => {
+  const cellMatchStatus = params.data?.__cellMatchStatus__?.[params.colDef?.field];
+  
+  if (!cellMatchStatus) {
+    return CellContent;
+  }
+
+  const statusConfig = {
+    'match': {
+      label: '✓',
+      className: 'bg-green-500 text-white'
+    },
+    'not-match': {
+      label: '✗',
+      className: 'bg-red-500 text-white'
+    }
+  };
+
+  const config = statusConfig[cellMatchStatus as keyof typeof statusConfig];
+  if (!config) return CellContent;
+
+  return (
+    <div className="flex items-center gap-2 w-full">
+      <span
+        className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${config.className}`}
+        role="status"
+        aria-label={`Cell marked as ${cellMatchStatus === 'match' ? 'Match' : 'Not Match'}`}
+        title={cellMatchStatus === 'match' ? 'Match' : 'Not Match'}
+      >
+        {config.label}
+      </span>
+      <span className="flex-1">{CellContent}</span>
+    </div>
+  );
+};
+
+// Default cell renderer with match status support
+const DefaultCellRenderer = (params: any) => {
+  const cellContent = params.value ?? '';
+  return withCellMatchStatus(cellContent, params);
+};
+
 // Status badge renderer
 const StatusRenderer = (params: any) => {
   const status = params.value || 'N/A';
@@ -110,11 +152,13 @@ const StatusRenderer = (params: any) => {
   };
   const colorClass = colorMap[status] || 'bg-gray-100 text-gray-600 border-gray-200';
   
-  return (
+  const cellContent = (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClass}`}>
       {status}
     </span>
   );
+  
+  return withCellMatchStatus(cellContent, params);
 };
 
 // Action buttons renderer
@@ -150,7 +194,7 @@ const CountButtonRenderer = (color: 'blue' | 'green' | 'purple') => (params: any
 // Company logo + name renderer
 const CompanyRenderer = (params: any) => {
   const { name, description, logo } = params.data || {};
-  return (
+  const cellContent = (
     <div className="flex items-center gap-3 py-1">
       <img 
         src={logo || "/placeholder.svg"} 
@@ -166,6 +210,7 @@ const CompanyRenderer = (params: any) => {
       </div>
     </div>
   );
+  return withCellMatchStatus(cellContent, params);
 };
 
 // Signal type badge
@@ -216,25 +261,44 @@ const LinkRenderer = (params: any) => {
 
 // Match status renderer
 const MatchStatusRenderer = (params: any) => {
-  const status = params.value;
-  if (!status) return null;
+  const rawStatus = params.value as string | null | undefined;
+  // Normalize legacy stored values.
+  const normalizedStatus = rawStatus === 'not-match' ? 'not_match' : rawStatus;
+
+  if (!normalizedStatus || normalizedStatus === 'suggested') {
+    return (
+      <span className="text-xs text-gray-400" aria-label="No match status">
+        -
+      </span>
+    );
+  }
 
   const statusConfig = {
-    'match': {
+    match: {
       label: 'Match',
-      className: 'bg-green-100 text-green-700 border-green-200'
+      className: 'bg-green-100 text-green-700 border-green-200',
     },
-    'not-match': {
+    not_match: {
       label: 'Not Match',
-      className: 'bg-red-100 text-red-700 border-red-200'
-    }
+      className: 'bg-red-100 text-red-700 border-red-200',
+    },
   };
 
-  const config = statusConfig[status as keyof typeof statusConfig];
-  if (!config) return null;
+  const config = statusConfig[normalizedStatus as keyof typeof statusConfig];
+  if (!config) {
+    return (
+      <span className="text-xs text-gray-400" aria-label="No match status">
+        -
+      </span>
+    );
+  }
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${config.className}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${config.className}`}
+      role="status"
+      aria-label={`Match status: ${config.label}`}
+    >
       {config.label}
     </span>
   );
@@ -257,6 +321,7 @@ export const companiesColumnDefs: ColDef[] = [
     headerName: 'Location',
     width: 150,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     valueFormatter: (params) => params.value || 'N/A',
   },
   {
@@ -264,6 +329,7 @@ export const companiesColumnDefs: ColDef[] = [
     headerName: 'Founded',
     width: 100,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     valueFormatter: (params) => params.value || 'N/A',
   },
   {
@@ -271,6 +337,7 @@ export const companiesColumnDefs: ColDef[] = [
     headerName: 'Employees',
     width: 110,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     valueFormatter: (params) => params.value || 'N/A',
   },
   {
@@ -290,6 +357,7 @@ export const companiesColumnDefs: ColDef[] = [
     headerName: 'Revenue',
     width: 120,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     valueFormatter: (params) => params.value || 'N/A',
   },
   {
@@ -324,6 +392,7 @@ export const peopleColumnDefs: ColDef[] = [
     flex: 1,
     minWidth: 180,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     pinned: 'left',
   },
   {
@@ -332,6 +401,7 @@ export const peopleColumnDefs: ColDef[] = [
     flex: 1,
     minWidth: 180,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
   },
   {
     field: 'role',
@@ -339,12 +409,14 @@ export const peopleColumnDefs: ColDef[] = [
     flex: 1,
     minWidth: 180,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
   },
   {
     field: 'location',
     headerName: 'Location',
     width: 150,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     valueFormatter: (params) => params.value || 'N/A',
   },
   {
@@ -353,6 +425,7 @@ export const peopleColumnDefs: ColDef[] = [
     flex: 1,
     minWidth: 220,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     valueFormatter: (params) => params.value || 'N/A',
   },
   {
@@ -387,6 +460,7 @@ export const newsColumnDefs: ColDef[] = [
     flex: 2,
     minWidth: 300,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     pinned: false,
   },
   {
@@ -394,6 +468,7 @@ export const newsColumnDefs: ColDef[] = [
     headerName: 'Source',
     width: 140,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     valueFormatter: (params) => params.value || 'N/A',
   },
   {
@@ -401,6 +476,7 @@ export const newsColumnDefs: ColDef[] = [
     headerName: 'Date',
     width: 120,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     valueFormatter: (params) => params.value || 'N/A',
   },
   {
@@ -408,6 +484,7 @@ export const newsColumnDefs: ColDef[] = [
     headerName: 'Company',
     width: 160,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     valueFormatter: (params) => params.value || 'N/A',
   },
   {
@@ -422,6 +499,7 @@ export const newsColumnDefs: ColDef[] = [
     flex: 2,
     minWidth: 300,
     editable: true,
+    cellRenderer: DefaultCellRenderer,
     valueFormatter: (params) => params.value || 'N/A',
   },
   {

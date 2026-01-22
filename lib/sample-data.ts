@@ -28,7 +28,7 @@ export const sampleCompanies = [
     people: 25,
     news: 15,
     logo: '/placeholder.svg',
-    matchStatus: 'not-match' as const
+    matchStatus: 'not_match' as const
   },
   {
     id: '3',
@@ -56,7 +56,7 @@ export const sampleCompanies = [
     people: 5,
     news: 4,
     logo: '/placeholder.svg',
-    matchStatus: 'not-match' as const
+    matchStatus: 'not_match' as const
   },
   {
     id: '5',
@@ -98,7 +98,7 @@ export const sampleCompanies = [
     people: 6,
     news: 3,
     logo: '/placeholder.svg',
-    matchStatus: 'not-match' as const
+    matchStatus: 'not_match' as const
   },
   {
     id: '8',
@@ -119,22 +119,22 @@ export const sampleCompanies = [
 // Sample People Data
 export const samplePeople = [
   { id: '1', name: 'Sarah Chen', company: 'TechFlow Solutions', role: 'CTO', location: 'San Francisco, CA', email: 'sarah.chen@techflow.com', intents: 4, matchStatus: 'match' as const },
-  { id: '2', name: 'Marcus Johnson', company: 'TechFlow Solutions', role: 'VP Engineering', location: 'San Francisco, CA', email: 'marcus.johnson@techflow.com', intents: 2, matchStatus: 'not-match' as const },
+  { id: '2', name: 'Marcus Johnson', company: 'TechFlow Solutions', role: 'VP Engineering', location: 'San Francisco, CA', email: 'marcus.johnson@techflow.com', intents: 2, matchStatus: 'not_match' as const },
   { id: '3', name: 'Elena Rodriguez', company: 'DataDriven Inc', role: 'Chief Data Scientist', location: 'Austin, TX', email: 'elena.rodriguez@datadriven.com', intents: 5, matchStatus: 'match' as const },
   { id: '4', name: 'Ahmed Hassan', company: 'Noon', role: 'VP Product', location: 'Dubai, UAE', email: 'ahmed.hassan@noon.com', intents: 3, matchStatus: 'match' as const },
-  { id: '5', name: 'Priya Sharma', company: 'Careem', role: 'Head of Engineering', location: 'Dubai, UAE', email: 'priya.sharma@careem.com', intents: 6, matchStatus: 'not-match' as const },
+  { id: '5', name: 'Priya Sharma', company: 'Careem', role: 'Head of Engineering', location: 'Dubai, UAE', email: 'priya.sharma@careem.com', intents: 6, matchStatus: 'not_match' as const },
   { id: '6', name: 'Mohammed Al-Rashid', company: 'Kitopi', role: 'CEO', location: 'Dubai, UAE', email: 'm.rashid@kitopi.com', intents: 8, matchStatus: 'match' as const },
-  { id: '7', name: 'Lisa Wang', company: 'Anghami', role: 'CPO', location: 'Beirut, Lebanon', email: 'lisa.wang@anghami.com', intents: 2, matchStatus: 'not-match' as const },
+  { id: '7', name: 'Lisa Wang', company: 'Anghami', role: 'CPO', location: 'Beirut, Lebanon', email: 'lisa.wang@anghami.com', intents: 2, matchStatus: 'not_match' as const },
   { id: '8', name: 'Omar Khaled', company: 'Swvl', role: 'COO', location: 'Cairo, Egypt', email: 'omar.khaled@swvl.com', intents: 4, matchStatus: 'match' as const },
 ];
 
 // Sample News Data
 export const sampleNews = [
   { id: '1', title: 'Noon Raises $500M in Series D Funding Round', source: 'TechCrunch', date: '2026-01-05', company: 'Noon', summary: 'E-commerce giant Noon secures massive funding to expand across MENA region with new fulfillment centers.', significance_score: 8.5, relevance_score: 9.2, matchStatus: 'match' as const },
-  { id: '2', title: 'Careem Launches Super App in Saudi Arabia', source: 'Bloomberg', date: '2026-01-04', company: 'Careem', summary: 'Uber-owned Careem expands its super app services to include food delivery and payments in KSA.', significance_score: 7.8, relevance_score: 8.7, matchStatus: 'not-match' as const },
+  { id: '2', title: 'Careem Launches Super App in Saudi Arabia', source: 'Bloomberg', date: '2026-01-04', company: 'Careem', summary: 'Uber-owned Careem expands its super app services to include food delivery and payments in KSA.', significance_score: 7.8, relevance_score: 8.7, matchStatus: 'not_match' as const },
   { id: '3', title: 'Kitopi Opens 50 New Cloud Kitchens in UAE', source: 'Arabian Business', date: '2026-01-03', company: 'Kitopi', summary: 'Food-tech unicorn accelerates expansion with new cloud kitchen locations across Dubai and Abu Dhabi.', significance_score: 6.2, relevance_score: 7.1, matchStatus: 'match' as const },
   { id: '4', title: 'Anghami Goes Public on NASDAQ', source: 'Reuters', date: '2026-01-02', company: 'Anghami', summary: 'Arab world\'s leading music streaming platform becomes first Arab tech company to list on NASDAQ.', significance_score: 9.1, relevance_score: 9.8, matchStatus: 'match' as const },
-  { id: '5', title: 'Swvl Expands Mass Transit to Latin America', source: 'The Verge', date: '2026-01-01', company: 'Swvl', summary: 'Egyptian mobility startup enters Latin American market with bus booking services in Mexico and Colombia.', significance_score: 7.3, relevance_score: 8.0, matchStatus: 'not-match' as const },
+  { id: '5', title: 'Swvl Expands Mass Transit to Latin America', source: 'The Verge', date: '2026-01-01', company: 'Swvl', summary: 'Egyptian mobility startup enters Latin American market with bus booking services in Mexico and Colombia.', significance_score: 7.3, relevance_score: 8.0, matchStatus: 'not_match' as const },
   { id: '6', title: 'Fawry Partners with Major Banks for Digital Payments', source: 'Fintech News', date: '2025-12-30', company: 'Fawry', summary: 'Egypt\'s leading fintech company announces strategic partnerships with five major banks.', significance_score: 6.8, relevance_score: 7.5, matchStatus: 'match' as const },
 ];
 

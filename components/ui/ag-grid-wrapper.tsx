@@ -37,10 +37,11 @@ export interface AgGridWrapperProps {
   onRowClick?: (data: any) => void;
   onSelectionChanged?: (selectedRows: any[]) => void;
   onCellValueChanged?: (event: any) => void;
+  onCellClicked?: (event: any) => void;
   onColumnHeaderDoubleClick?: (columnField: string, currentName: string) => void;
   className?: string;
   height?: string;
-  rowSelection?: 'single' | 'multiple';
+  rowSelection?: { mode: 'singleRow' | 'multiRow'; checkboxes?: boolean; headerCheckbox?: boolean };
   loading?: boolean;
   emptyMessage?: string;
   getRowClass?: (params: any) => string;
@@ -59,10 +60,11 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
   onRowClick,
   onSelectionChanged,
   onCellValueChanged,
+  onCellClicked,
   onColumnHeaderDoubleClick,
   className = "",
   height = "60vh",
-  rowSelection = "multiple",
+  rowSelection = { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
   loading = false,
   emptyMessage = "No results to display",
   getRowClass,
@@ -148,6 +150,7 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
         columnDefs={columnDefs}
         onGridReady={onGridReady}
         onRowClicked={onRowClicked}
+        onCellClicked={onCellClicked}
         onSelectionChanged={handleSelectionChanged}
         onCellValueChanged={handleCellValueChanged}
         onColumnHeaderClicked={handleColumnHeaderClicked}
