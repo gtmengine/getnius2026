@@ -11,14 +11,18 @@ export const selectCol = (): ColDef => ({
   lockPosition: true,
   suppressMovable: true,
   suppressColumnsToolPanel: true,
-  width: 40,
-  minWidth: 40,
-  maxWidth: 40,
+  checkboxSelection: true,
+  headerCheckboxSelection: true,
+  headerCheckboxSelectionFilteredOnly: false,
+  width: 48,
+  minWidth: 48,
+  maxWidth: 48,
   suppressSizeToFit: true,
   resizable: false,
   sortable: false,
   filter: false,
-  cellStyle: { paddingLeft: '8px', paddingRight: '0px' },
+  suppressMenu: true,
+  cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
   headerClass: 'ag-left-aligned-header',
 });
 
@@ -309,7 +313,6 @@ const MatchStatusRenderer = (params: any) => {
 
 // Column definitions for Companies tab
 export const companiesColumnDefs: ColDef[] = [
-  selectCol(),
   {
     field: 'name',
     headerName: 'Company',
@@ -388,7 +391,6 @@ export const companiesColumnDefs: ColDef[] = [
 
 // Column definitions for People tab
 export const peopleColumnDefs: ColDef[] = [
-  selectCol(),
   {
     field: 'name',
     headerName: 'Name',
@@ -456,7 +458,6 @@ export const peopleColumnDefs: ColDef[] = [
 
 // Column definitions for News tab
 export const newsColumnDefs: ColDef[] = [
-  selectCol(),
   {
     field: 'title',
     headerName: 'Title',
@@ -532,7 +533,6 @@ export const newsColumnDefs: ColDef[] = [
 
 // Column definitions for Signals tab
 export const signalsColumnDefs: ColDef[] = [
-  selectCol(),
   {
     field: 'signalType',
     headerName: 'Signal Type',
@@ -595,7 +595,6 @@ export const signalsColumnDefs: ColDef[] = [
 
 // Column definitions for Market Reports tab
 export const marketColumnDefs: ColDef[] = [
-  selectCol(),
   {
     field: 'title',
     headerName: 'Report Title',
@@ -652,7 +651,6 @@ export const marketColumnDefs: ColDef[] = [
 
 // Column definitions for Patents tab
 export const patentsColumnDefs: ColDef[] = [
-  selectCol(),
   {
     field: 'title',
     headerName: 'Title',
@@ -713,7 +711,6 @@ export const patentsColumnDefs: ColDef[] = [
 
 // Column definitions for Research Papers tab
 export const researchPapersColumnDefs: ColDef[] = [
-  selectCol(),
   {
     field: 'title',
     headerName: 'Title',

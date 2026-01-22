@@ -41,7 +41,7 @@ export interface AgGridWrapperProps {
   onColumnHeaderDoubleClick?: (columnField: string, currentName: string) => void;
   className?: string;
   height?: string;
-  rowSelection?: { mode: 'singleRow' | 'multiRow'; checkboxes?: boolean; headerCheckbox?: boolean };
+  rowSelection?: { mode: 'singleRow' | 'multiRow'; checkboxes?: boolean; headerCheckbox?: boolean } | false;
   loading?: boolean;
   emptyMessage?: string;
   getRowClass?: (params: any) => string;
@@ -64,7 +64,7 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
   onColumnHeaderDoubleClick,
   className = "",
   height = "60vh",
-  rowSelection = { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
+  rowSelection,
   loading = false,
   emptyMessage = "No results to display",
   getRowClass,
@@ -153,7 +153,7 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
         }
         .ag-theme-quartz [col-id="ag-Grid-SelectionColumn"] .ag-cell-wrapper {
           justify-content: flex-start !important;
-          padding-left: 8px !important;
+          padding-left: 0 !important;
         }
         .ag-theme-quartz [col-id="ag-Grid-SelectionColumn"] .ag-selection-checkbox {
           margin-left: 0 !important;
@@ -171,7 +171,7 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
         onCellValueChanged={handleCellValueChanged}
         onColumnHeaderClicked={handleColumnHeaderClicked}
         animateRows={true}
-        rowSelection={rowSelection}
+        {...(rowSelection ? { rowSelection } : {})}
         defaultColDef={defaultColDef}
         loadingOverlayComponent={loadingOverlayComponent}
         noRowsOverlayComponent={noRowsOverlayComponent}

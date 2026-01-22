@@ -40,6 +40,7 @@ import { searchWithGoogle } from '@/lib/search-apis';
 import { downloadCSV, toCSV } from '@/lib/csv';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { SubscribeModal } from '@/components/paywall/SubscribeModal';
+import { AuthModal } from '@/components/paywall/AuthModal';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 // Icon map for tabs
@@ -113,7 +114,7 @@ const toStoredColumns = (columns: ColDef[]) =>
         type: custom.columnType || 'text',
         width: col.width,
         minWidth: col.minWidth,
-        flex: col.flex,
+        flex: col.flex || undefined,
       } satisfies StoredColumnDef;
     });
 
@@ -492,7 +493,7 @@ interface ResultsPanelProps {
   setRowDataByTab: React.Dispatch<React.SetStateAction<Record<TabId, any[]>>>;
   setSearchProgress: React.Dispatch<React.SetStateAction<string | null>>;
   isContinuousSearchActiveRef: React.MutableRefObject<boolean>;
-  gridRef: React.RefObject<AgGridWrapperRef>;
+  gridRef: React.RefObject<AgGridWrapperRef | null>;
   significanceMin: number;
   relevanceMin: number;
   onSignificanceChange: (value: number) => void;
@@ -995,7 +996,6 @@ function ResultsPanel({
           onCellClicked={onCellClicked}
           onColumnHeaderDoubleClick={onColumnHeaderDoubleClick}
           emptyMessage={emptyMessage}
-          rowSelection={{ mode: 'multiRow', checkboxes: true, headerCheckbox: true }}
           getRowClass={getRowClass}
         />
       </div>
@@ -1045,6 +1045,7 @@ export default function Page() {
   const [isAddRowOpen, setIsAddRowOpen] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [isSubscribeOpen, setIsSubscribeOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isConfirmNotMatchOpen, setIsConfirmNotMatchOpen] = useState(false);
   const [paywallArmedFor, setPaywallArmedFor] = useState<{ tab: TabId; token: number } | null>(null);
   const paywallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1066,7 +1067,7 @@ export default function Page() {
     return 1.0;
   });
   
-  const gridRef = useRef<AgGridWrapperRef>(null);
+  const gridRef = useRef<AgGridWrapperRef | null>(null);
 
   // Persist slider values to localStorage
   useEffect(() => {
@@ -1569,9 +1570,10 @@ export default function Page() {
       <PaywallModal
         open={isPaywallOpen}
         onClose={() => setIsPaywallOpen(false)}
-        onOpenSubscribe={() => setIsSubscribeOpen(true)}
+        onOpenAuth={() => setIsAuthOpen(true)}
       />
       <SubscribeModal open={isSubscribeOpen} onClose={() => setIsSubscribeOpen(false)} />
+      <AuthModal open={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
 
       <ConfirmDialog
         open={isConfirmNotMatchOpen}

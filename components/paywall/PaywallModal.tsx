@@ -7,7 +7,7 @@ import type { PlanOption, PaywallPlanId } from './types';
 interface PaywallModalProps {
   open: boolean;
   onClose: () => void;
-  onOpenSubscribe: () => void;
+  onOpenAuth: () => void;
 }
 
 const planOptions: PlanOption[] = [
@@ -41,7 +41,7 @@ const handlePlanKeyDown = (
   }
 };
 
-export function PaywallModal({ open, onClose, onOpenSubscribe }: PaywallModalProps) {
+export function PaywallModal({ open, onClose, onOpenAuth }: PaywallModalProps) {
   useEffect(() => {
     if (!open) return;
 
@@ -59,7 +59,7 @@ export function PaywallModal({ open, onClose, onOpenSubscribe }: PaywallModalPro
 
   const handlePlanSelect = (planId: PaywallPlanId) => {
     if (planId === 'free') {
-      onOpenSubscribe();
+      onOpenAuth();
     }
   };
 
@@ -198,11 +198,11 @@ export function PaywallModal({ open, onClose, onOpenSubscribe }: PaywallModalPro
                 </button>
                 <button
                   type="button"
-                  onClick={onOpenSubscribe}
+                  onClick={onOpenAuth}
                   className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors transition-shadow motion-safe:duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:w-auto sm:min-w-[280px]"
                 >
                   <Mail className="h-5 w-5 text-slate-700" />
-                  <span>Subscribe with Email</span>
+                  <span>Continue with Email</span>
                 </button>
               </div>
               <p className="text-center text-xs text-slate-500">
