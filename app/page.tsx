@@ -27,7 +27,6 @@ import { AgGridWrapper, AgGridWrapperRef } from '@/components/ui/ag-grid-wrapper
 import { AddColumnModal } from '@/components/modals/AddColumnModal';
 import { AddRowModal } from '@/components/modals/AddRowModal';
 import { columnDefsMap, getExportColumnsForTab, TabId, tabConfigs } from '@/lib/grid-columns';
-import { sampleDataMap } from '@/lib/sample-data';
 import { ColDef } from 'ag-grid-community';
 import {
   ColumnKind,
@@ -37,6 +36,7 @@ import {
   saveStoredRowData,
 } from '@/lib/dynamicSchema';
 import { searchWithGoogle } from '@/lib/search-apis';
+import { normalizeCseItems } from '@/lib/google/normalize';
 import { downloadCSV, toCSV } from '@/lib/csv';
 import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { SubscribeModal } from '@/components/paywall/SubscribeModal';
@@ -1181,8 +1181,9 @@ export default function Page() {
   }), [filteredResults, searchedTabs]);
   
   // Search handler
-  const handleSearch = useCallback(() => {
-    if (!query.trim()) return;
+  const handleSearch = useCallback(async () => {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) return;
 
     setIsSearching(true);
     setError(null);
@@ -1195,44 +1196,59 @@ export default function Page() {
     }
     paywallTimerTokenRef.current = null;
 
-    let nextResults: any[] = [];
+    try {
+      const tabsToSearch = tabConfigs.map((tab) => tab.id);
 
-    switch (activeTab) {
-      case 'companies':
-        nextResults = sampleDataMap.companies;
-        break;
-      case 'people':
-        nextResults = sampleDataMap.people;
-        break;
-      case 'news':
-        nextResults = sampleDataMap.news;
-        break;
-      case 'signals':
-        nextResults = sampleDataMap.signals;
-        break;
-      case 'market':
-        nextResults = sampleDataMap.market;
-        break;
-      case 'patents':
-        nextResults = sampleDataMap.patents;
-        break;
-      case 'research-papers':
-        nextResults = sampleDataMap['research-papers'];
-        break;
-      default:
-        nextResults = [];
+      const fetchTabResults = async (tab: TabId) => {
+        try {
+          const response = await fetch('/api/google-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: trimmedQuery, tab }),
+          });
+
+          const data = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            return { tab, items: [], error: data?.error || 'Search failed. Please try again.' };
+          }
+
+          return { tab, items: Array.isArray(data?.items) ? data.items : [], error: data?.error };
+        } catch (error) {
+          console.error(`Search request failed for ${tab}:`, error);
+          return { tab, items: [], error: 'Search failed. Please try again.' };
+        }
+      };
+
+      const tabResponses = await Promise.all(tabsToSearch.map(fetchTabResults));
+      const nextResults = tabResponses.reduce((acc, { tab, items }) => {
+        acc[tab] = normalizeCseItems(items, { tab });
+        return acc;
+      }, {} as Record<TabId, any[]>);
+      const nextSearchedTabs = tabsToSearch.reduce((acc, tab) => {
+        acc[tab] = true;
+        return acc;
+      }, {} as Record<TabId, boolean>);
+      const activeResponse = tabResponses.find((response) => response.tab === activeTab);
+
+      setResults(nextResults);
+      setSearchedTabs(nextSearchedTabs);
+      setError(activeResponse?.error ?? null);
+    } catch (error) {
+      console.error('Search request failed:', error);
+      setError('Search failed. Please try again.');
+      setResults((prevResults) => ({
+        ...prevResults,
+        [activeTab]: [],
+      }));
+      setSearchedTabs((prevTabs) => ({
+        ...prevTabs,
+        [activeTab]: true,
+      }));
+    } finally {
+      setIsSearching(false);
+      setPaywallArmedFor({ tab: activeTab, token: Date.now() });
     }
-
-    setResults((prevResults) => ({
-      ...prevResults,
-      [activeTab]: nextResults,
-    }));
-    setSearchedTabs((prevTabs) => ({
-      ...prevTabs,
-      [activeTab]: true,
-    }));
-    setIsSearching(false);
-    setPaywallArmedFor({ tab: activeTab, token: Date.now() });
   }, [activeTab, query, setResults]);
   
   // Tab change handler

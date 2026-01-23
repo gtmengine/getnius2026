@@ -96,24 +96,6 @@ export async function searchWithGoogle(query: string): Promise<Company[]> {
     return data.companies || []
   } catch (error) {
     console.error("Google search error:", error)
-
-    // Try alternative search as fallback if Google fails
-    console.log("Falling back to alternative search...")
-    try {
-      const altResponse = await fetch("/api/search/alternative", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      })
-
-      if (altResponse.ok) {
-        const altData = await altResponse.json()
-        return altData.companies || []
-      }
-    } catch (altError) {
-      console.error("Alternative search fallback also failed:", altError)
-    }
-
     return []
   }
 }
