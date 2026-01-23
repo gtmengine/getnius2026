@@ -10,26 +10,13 @@ export async function POST(request: NextRequest) {
 
     // Check if Google API credentials are configured
     const apiKey = process.env.GOOGLE_API_KEY
-    const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID
+    const searchEngineId = process.env.GOOGLE_CSE_ID
 
     if (!apiKey || !searchEngineId) {
-      console.warn("Google API credentials not configured, falling back to alternative search")
-      // Fallback to alternative search
-      const altResponse = await fetch(`${request.nextUrl.origin}/api/search/alternative`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      })
-
-      if (altResponse.ok) {
-        const altData = await altResponse.json()
-        return NextResponse.json({ companies: altData.companies || [] })
-      }
-
       return NextResponse.json({
-        error: "Google API credentials not configured. Please set GOOGLE_API_KEY and GOOGLE_SEARCH_ENGINE_ID environment variables.",
+        error: "Google CSE is not configured. Set GOOGLE_API_KEY and GOOGLE_CSE_ID.",
         companies: []
-      }, { status: 503 })
+      }, { status: 500 })
     }
 
     // Google Custom Search API call
@@ -41,23 +28,6 @@ export async function POST(request: NextRequest) {
     if (!googleResponse.ok) {
       const errorText = await googleResponse.text()
       console.error("Google API error:", googleResponse.status, errorText)
-
-      // Try fallback search on API failure
-      try {
-        const altResponse = await fetch(`${request.nextUrl.origin}/api/search/alternative`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query }),
-        })
-
-        if (altResponse.ok) {
-          const altData = await altResponse.json()
-          return NextResponse.json({ companies: altData.companies || [] })
-        }
-      } catch (fallbackError) {
-        console.error("Fallback search also failed:", fallbackError)
-      }
-
       throw new Error(`Google API error: ${googleResponse.status} - ${errorText}`)
     }
 
