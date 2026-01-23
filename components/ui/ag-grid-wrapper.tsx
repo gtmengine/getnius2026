@@ -64,7 +64,7 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
   onColumnHeaderDoubleClick,
   className = "",
   height = "60vh",
-  rowSelection,
+  rowSelection = { mode: 'multiRow' },
   loading = false,
   emptyMessage = "No results to display",
   getRowClass,
@@ -151,12 +151,8 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
         .ag-theme-quartz [col-id="select"] .ag-selection-checkbox {
           margin-left: 0 !important;
         }
-        .ag-theme-quartz [col-id="ag-Grid-SelectionColumn"] .ag-cell-wrapper {
-          justify-content: flex-start !important;
-          padding-left: 0 !important;
-        }
-        .ag-theme-quartz [col-id="ag-Grid-SelectionColumn"] .ag-selection-checkbox {
-          margin-left: 0 !important;
+        .ag-theme-quartz [col-id="ag-Grid-SelectionColumn"] {
+          display: none !important;
         }
       `}</style>
       <AgGridReact
@@ -167,11 +163,13 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
         onGridReady={onGridReady}
         onRowClicked={onRowClicked}
         onCellClicked={onCellClicked}
+        rowSelection={rowSelection}
         onSelectionChanged={handleSelectionChanged}
         onCellValueChanged={handleCellValueChanged}
         onColumnHeaderClicked={handleColumnHeaderClicked}
         animateRows={true}
-        {...(rowSelection ? { rowSelection } : {})}
+        suppressRowClickSelection={true}
+        suppressCellFocus={false}
         defaultColDef={defaultColDef}
         loadingOverlayComponent={loadingOverlayComponent}
         noRowsOverlayComponent={noRowsOverlayComponent}

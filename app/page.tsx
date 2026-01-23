@@ -996,6 +996,7 @@ function ResultsPanel({
           onCellClicked={onCellClicked}
           onColumnHeaderDoubleClick={onColumnHeaderDoubleClick}
           emptyMessage={emptyMessage}
+          rowSelection={{ mode: 'multiRow' }}
           getRowClass={getRowClass}
         />
       </div>
