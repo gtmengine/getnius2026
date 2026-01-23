@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Mail, X, Eye, EyeOff } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
@@ -16,8 +16,11 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isSupabaseAvailable, setIsSupabaseAvailable] = useState<boolean | null>(null);
 
-  const supabase = getSupabaseBrowserClient();
+  useEffect(() => {
+    setIsSupabaseAvailable(Boolean(getSupabaseBrowserClient()));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +28,12 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
     setError('');
 
     try {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) {
+        setError('Auth is disabled in demo mode.');
+        return;
+      }
+
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({
           email,
@@ -102,6 +111,11 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSupabaseAvailable === false && (
+              <div className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700">
+                Auth is disabled in demo mode.
+              </div>
+            )}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
                 Email
