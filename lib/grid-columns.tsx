@@ -524,6 +524,12 @@ export const newsColumnDefs: ColDef[] = [
     valueFormatter: (params) => params.value?.toFixed(1) || '0.0',
   },
   {
+    field: 'trustScore',
+    headerName: 'TRUST SCORE',
+    width: 130,
+    valueFormatter: (params) => params.value?.toFixed(1) || '0.0',
+  },
+  {
     field: 'actions',
     headerName: '',
     width: 80,
