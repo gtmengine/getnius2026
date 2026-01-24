@@ -42,6 +42,8 @@ import { PaywallModal } from '@/components/paywall/PaywallModal';
 import { SubscribeModal } from '@/components/paywall/SubscribeModal';
 import { AuthModal } from '@/components/paywall/AuthModal';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { RowDetailsSidebar } from '@/components/ui/row-details-sidebar';
+import { mapRowToSidebarModel } from '@/lib/row-details';
 
 // Icon map for tabs
 const iconMap = {
@@ -502,6 +504,7 @@ interface ResultsPanelProps {
   searchProgress?: string | null;
   emptyMessage: string;
   onCellClicked?: (event: any) => void;
+  onRowClick?: (row: any) => void;
   paintMode: 'match' | 'not-match' | null;
 }
 
@@ -532,6 +535,7 @@ function ResultsPanel({
   getRowClass,
   searchProgress,
   emptyMessage,
+  onRowClick,
   paintMode
 }: ResultsPanelProps) {
   const columnDefs = useMemo(() => {
@@ -994,6 +998,7 @@ function ResultsPanel({
           onSelectionChanged={onSelectionChanged}
           onCellValueChanged={onCellValueChanged}
           onCellClicked={onCellClicked}
+          onRowClick={onRowClick}
           onColumnHeaderDoubleClick={onColumnHeaderDoubleClick}
           emptyMessage={emptyMessage}
           rowSelection={{ mode: 'multiRow' }}
@@ -1037,6 +1042,7 @@ export default function Page() {
   const results = rowDataByTab;
   const setResults = setRowDataByTab;
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
+  const [sidebarState, setSidebarState] = useState<{ tab: TabId; row: any } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchProgress, setSearchProgress] = useState<string | null>(null);
   const [isMatchActive, setIsMatchActive] = useState(false);
@@ -1256,6 +1262,14 @@ export default function Page() {
     setActiveTab(tab);
     setSelectedRows([]);
   }, []);
+
+  useEffect(() => {
+    setSidebarState(null);
+  }, [activeTab]);
+
+  const handleRowClick = useCallback((row: any) => {
+    setSidebarState({ tab: activeTab, row });
+  }, [activeTab]);
   
   // Selection change handler
   const handleSelectionChanged = useCallback((rows: any[]) => {
@@ -1466,6 +1480,11 @@ export default function Page() {
   const emptyMessage = searchedTabs[activeTab]
     ? `No ${activeTab} data available.`
     : 'Run a search to see results';
+
+  const sidebarModel = useMemo(() => {
+    if (!sidebarState) return null;
+    return mapRowToSidebarModel(sidebarState.tab, sidebarState.row);
+  }, [sidebarState]);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
@@ -1538,6 +1557,7 @@ export default function Page() {
           onSelectionChanged={handleSelectionChanged}
           onCellValueChanged={handleCellValueChanged}
           onCellClicked={handleCellClicked}
+          onRowClick={handleRowClick}
           onAddColumn={() => setIsAddColumnOpen(true)}
           onAddRow={() => setIsAddRowOpen(true)}
           onMatch={toggleMatchPaintMode}
@@ -1566,6 +1586,15 @@ export default function Page() {
           searchProgress={searchProgress}
           emptyMessage={emptyMessage}
           paintMode={paintMode}
+        />
+
+        <RowDetailsSidebar
+          open={Boolean(sidebarState)}
+          onClose={() => setSidebarState(null)}
+          title={sidebarModel?.title || ''}
+          link={sidebarModel?.link}
+          fields={sidebarModel?.fields || []}
+          summary={sidebarModel?.summary}
         />
 
         <AddColumnModal
