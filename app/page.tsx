@@ -302,8 +302,10 @@ interface ResultsToolbarProps {
   activeTab: TabId;
   significanceMin: number;
   relevanceMin: number;
+  trustMin: number;
   onSignificanceChange: (value: number) => void;
   onRelevanceChange: (value: number) => void;
+  onTrustChange: (value: number) => void;
   paintMode: 'match' | 'not-match' | null;
 }
 
@@ -320,8 +322,10 @@ function ResultsToolbar({
   activeTab,
   significanceMin,
   relevanceMin,
+  trustMin,
   onSignificanceChange,
   onRelevanceChange,
+  onTrustChange,
   paintMode
 }: ResultsToolbarProps) {
   const hasSelection = selectedCount > 0;
@@ -329,146 +333,173 @@ function ResultsToolbar({
   const isNotMatchPaintActive = paintMode === 'not-match';
   
   return (
-    <div className="flex items-center justify-between py-3 px-1">
-      <div className="flex items-center gap-2">
-        {/* Match / Not Match toggles - Paint Mode */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+    <div className="flex flex-col gap-2 py-3 px-1">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          {/* Match / Not Match toggles - Paint Mode */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={onMatch}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
+                isMatchPaintActive 
+                  ? 'bg-green-100 text-green-800 shadow-sm border-2 border-green-500' 
+                  : 'text-green-700'
+              }`}
+              aria-label={isMatchPaintActive ? 'Paint mode active: Click cells to mark as Match' : 'Activate Match paint mode'}
+              aria-pressed={isMatchPaintActive}
+            >
+              <Check className="w-3.5 h-3.5" />
+              Match
+            </button>
+            <button
+              onClick={onNotMatch}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 ${
+                isNotMatchPaintActive 
+                  ? 'bg-red-100 text-red-800 shadow-sm border-2 border-red-500' 
+                  : 'text-red-600'
+              }`}
+              aria-label={isNotMatchPaintActive ? 'Paint mode active: Click cells to mark as Not Match' : 'Activate Not Match paint mode'}
+              aria-pressed={isNotMatchPaintActive}
+            >
+              <X className="w-3.5 h-3.5" />
+              Not Match
+            </button>
+          </div>
+        
+          <div className="h-6 w-px bg-gray-200 mx-1" />
+        
+          {/* Action Buttons */}
           <button
-            onClick={onMatch}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
-              isMatchPaintActive 
-                ? 'bg-green-100 text-green-800 shadow-sm border-2 border-green-500' 
-                : 'text-green-700'
-            }`}
-            aria-label={isMatchPaintActive ? 'Paint mode active: Click cells to mark as Match' : 'Activate Match paint mode'}
-            aria-pressed={isMatchPaintActive}
+            onClick={onFindLookalikes}
+            disabled={!hasSelection}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+            aria-label={`Find lookalikes for ${selectedCount} selected rows`}
+            aria-disabled={!hasSelection}
           >
-            <Check className="w-3.5 h-3.5" />
-            Match
+            <Copy className="w-3.5 h-3.5" />
+            Find Lookalikes
           </button>
+
           <button
-            onClick={onNotMatch}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 ${
-              isNotMatchPaintActive 
-                ? 'bg-red-100 text-red-800 shadow-sm border-2 border-red-500' 
-                : 'text-red-600'
-            }`}
-            aria-label={isNotMatchPaintActive ? 'Paint mode active: Click cells to mark as Not Match' : 'Activate Not Match paint mode'}
-            aria-pressed={isNotMatchPaintActive}
+            onClick={onEnrich}
+            disabled={!hasSelection}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+            aria-label={`Enrich ${selectedCount} selected rows`}
+            aria-disabled={!hasSelection}
           >
-            <X className="w-3.5 h-3.5" />
-            Not Match
+            <Sparkles className="w-3.5 h-3.5" />
+            Enrich
           </button>
+
+          <button
+            onClick={onDelete}
+            disabled={!hasSelection}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+            aria-label={`Delete ${selectedCount} selected rows`}
+            aria-disabled={!hasSelection}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete
+          </button>
+
+          <div className="h-6 w-px bg-gray-200 mx-1" />
+
+          {/* Data Management Buttons */}
+          <button
+            onClick={onAddColumn}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Column
+          </button>
+
+          <button
+            onClick={onAddRow}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Row
+          </button>
+
         </div>
-        
-        <div className="h-6 w-px bg-gray-200 mx-1" />
-        
-        {/* Action Buttons */}
-        <button
-          onClick={onFindLookalikes}
-          disabled={!hasSelection}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
-          aria-label={`Find lookalikes for ${selectedCount} selected rows`}
-          aria-disabled={!hasSelection}
-        >
-          <Copy className="w-3.5 h-3.5" />
-          Find Lookalikes
-        </button>
+        <div className="ml-auto flex items-center justify-end gap-3 min-w-0 flex-wrap lg:flex-nowrap">
+          {/* News Filters - only show for news tab */}
+          {activeTab === 'news' && (
+            <>
+              <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
+              <div className="flex flex-wrap items-center gap-3 justify-end lg:flex-nowrap">
+                {/* Significance Slider */}
+                <div className="flex flex-col gap-1 w-[220px] min-w-[200px]">
+                  <label htmlFor="significance-min" className="text-xs text-gray-600 font-medium leading-tight">
+                    Significance min {significanceMin.toFixed(1)}
+                  </label>
+                  <input
+                    id="significance-min"
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={significanceMin}
+                    onChange={(e) => onSignificanceChange(parseFloat(e.target.value))}
+                    aria-label="Significance minimum"
+                    className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer slider focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+                  />
+                </div>
 
-        <button
-          onClick={onEnrich}
-          disabled={!hasSelection}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
-          aria-label={`Enrich ${selectedCount} selected rows`}
-          aria-disabled={!hasSelection}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          Enrich
-        </button>
+                {/* Relevance Slider */}
+                <div className="flex flex-col gap-1 w-[220px] min-w-[200px]">
+                  <label htmlFor="relevance-min" className="text-xs text-gray-600 font-medium leading-tight">
+                    Relevance min {relevanceMin.toFixed(1)}
+                  </label>
+                  <input
+                    id="relevance-min"
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={relevanceMin}
+                    onChange={(e) => onRelevanceChange(parseFloat(e.target.value))}
+                    aria-label="Relevance minimum"
+                    className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer slider focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+                  />
+                </div>
 
-        <button
-          onClick={onDelete}
-          disabled={!hasSelection}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
-          aria-label={`Delete ${selectedCount} selected rows`}
-          aria-disabled={!hasSelection}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          Delete
-        </button>
+                {/* Trust Score Slider */}
+                <div className="flex flex-col gap-1 w-[220px] min-w-[200px]">
+                  <label htmlFor="trust-min" className="text-xs text-gray-600 font-medium leading-tight">
+                    Trust Score min {trustMin.toFixed(1)}
+                  </label>
+                  <input
+                    id="trust-min"
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={trustMin}
+                    onChange={(e) => onTrustChange(parseFloat(e.target.value))}
+                    aria-label="Trust score minimum"
+                    className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer slider focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
-        <div className="h-6 w-px bg-gray-200 mx-1" />
-
-        {/* Data Management Buttons */}
-        <button
-          onClick={onAddColumn}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add Column
-        </button>
-
-        <button
-          onClick={onAddRow}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add Row
-        </button>
-
-        {/* News Filters - only show for news tab */}
-        {activeTab === 'news' && (
-          <>
-            <div className="h-6 w-px bg-gray-200 mx-1" />
-
-            {/* Significance Slider */}
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs text-gray-600 font-medium whitespace-nowrap">
-                Significance min {significanceMin.toFixed(1)}
+          <div className="flex items-center gap-3 shrink-0">
+            {hasSelection && (
+              <span className="text-sm text-gray-500 font-medium">
+                {selectedCount} selected
               </span>
-              <input
-                type="range"
-                min="0"
-                max="10"
-                step="0.1"
-                value={significanceMin}
-                onChange={(e) => onSignificanceChange(parseFloat(e.target.value))}
-                className="w-20 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-              />
-            </div>
-
-            {/* Relevance Slider */}
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs text-gray-600 font-medium whitespace-nowrap">
-                Relevance min {relevanceMin.toFixed(1)}
-              </span>
-              <input
-                type="range"
-                min="0"
-                max="10"
-                step="0.1"
-                value={relevanceMin}
-                onChange={(e) => onRelevanceChange(parseFloat(e.target.value))}
-                className="w-20 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-              />
-            </div>
-          </>
-        )}
-      </div>
-      
-      <div className="flex items-center gap-3">
-        {hasSelection && (
-          <span className="text-sm text-gray-500 font-medium">
-            {selectedCount} selected
-          </span>
-        )}
-        <button
-          onClick={onExport}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-gray-100 text-gray-700 hover:bg-gray-200"
-        >
-          <Download className="w-3.5 h-3.5" />
-          Export
-        </button>
+            )}
+            <button
+              onClick={onExport}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all bg-gray-100 text-gray-700 hover:bg-gray-200 shrink-0"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Export
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -498,8 +529,10 @@ interface ResultsPanelProps {
   gridRef: React.RefObject<AgGridWrapperRef | null>;
   significanceMin: number;
   relevanceMin: number;
+  trustMin: number;
   onSignificanceChange: (value: number) => void;
   onRelevanceChange: (value: number) => void;
+  onTrustChange: (value: number) => void;
   getRowClass?: (params: any) => string;
   searchProgress?: string | null;
   emptyMessage: string;
@@ -530,8 +563,10 @@ function ResultsPanel({
   gridRef,
   significanceMin,
   relevanceMin,
+  trustMin,
   onSignificanceChange,
   onRelevanceChange,
+  onTrustChange,
   getRowClass,
   searchProgress,
   emptyMessage,
@@ -981,8 +1016,10 @@ function ResultsPanel({
           activeTab={activeTab}
           significanceMin={significanceMin}
           relevanceMin={relevanceMin}
+          trustMin={trustMin}
           onSignificanceChange={onSignificanceChange}
           onRelevanceChange={onRelevanceChange}
+          onTrustChange={onTrustChange}
           paintMode={paintMode}
         />
       </div>
@@ -1073,6 +1110,13 @@ export default function Page() {
     }
     return 1.0;
   });
+  const [trustMin, setTrustMin] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('news-trust-min');
+      return saved ? parseFloat(saved) : 1.0;
+    }
+    return 1.0;
+  });
   
   const gridRef = useRef<AgGridWrapperRef | null>(null);
 
@@ -1084,6 +1128,10 @@ export default function Page() {
   useEffect(() => {
     localStorage.setItem('news-relevance-min', relevanceMin.toString());
   }, [relevanceMin]);
+
+  useEffect(() => {
+    localStorage.setItem('news-trust-min', trustMin.toString());
+  }, [trustMin]);
 
   useEffect(() => {
     tabConfigs.forEach((tab) => {
@@ -1139,9 +1187,10 @@ export default function Page() {
   const filteredNews = useMemo(() => {
     return results.news.filter(item =>
       (item.significance_score || 0) >= significanceMin &&
-      (item.relevance_score || 0) >= relevanceMin
+      (item.relevance_score || 0) >= relevanceMin &&
+      (item.trustScore || 0) >= trustMin
     );
-  }, [results.news, significanceMin, relevanceMin]);
+  }, [results.news, significanceMin, relevanceMin, trustMin]);
 
   // Create filtered results object
   const filteredResults = useMemo(() => ({
@@ -1307,6 +1356,10 @@ export default function Page() {
 
   const handleRelevanceChange = useCallback((value: number) => {
     setRelevanceMin(value);
+  }, []);
+
+  const handleTrustChange = useCallback((value: number) => {
+    setTrustMin(value);
   }, []);
 
   const handleExport = useCallback(() => {
@@ -1580,8 +1633,10 @@ export default function Page() {
           gridRef={gridRef}
           significanceMin={significanceMin}
           relevanceMin={relevanceMin}
+          trustMin={trustMin}
           onSignificanceChange={handleSignificanceChange}
           onRelevanceChange={handleRelevanceChange}
+          onTrustChange={handleTrustChange}
           getRowClass={getRowClass}
           searchProgress={searchProgress}
           emptyMessage={emptyMessage}

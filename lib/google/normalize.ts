@@ -16,6 +16,39 @@ type NormalizeOptions = {
 
 const safeText = (value?: string) => value?.trim() ?? "";
 
+const highTrustDomains = new Set([
+  "reuters.com",
+  "ft.com",
+  "wsj.com",
+  "bloomberg.com",
+  "techcrunch.com",
+  "theverge.com",
+  "wired.com",
+  "bbc.co.uk",
+  "nytimes.com",
+  "economist.com",
+]);
+
+const normalizeDomain = (source: string) => {
+  const trimmed = source.trim().toLowerCase();
+  if (!trimmed) return "";
+  const withoutProtocol = trimmed.replace(/^https?:\/\//, "");
+  const withoutPath = withoutProtocol.split("/")[0] ?? "";
+  const withoutPort = withoutPath.split(":")[0] ?? "";
+  return withoutPort.replace(/^www\./, "");
+};
+
+const computeTrustScoreFromSource = (source: string) => {
+  const domain = normalizeDomain(source);
+  if (!domain) return 0;
+  for (const trusted of highTrustDomains) {
+    if (domain === trusted || domain.endsWith(`.${trusted}`)) {
+      return 9.0;
+    }
+  }
+  return 5;
+};
+
 const extractDate = (text: string) => {
   const candidates = [
     /\b\d{4}-\d{2}-\d{2}\b/,
@@ -117,6 +150,7 @@ export function normalizeCseItems(items: GoogleCseItem[], options: NormalizeOpti
           summary: snippet,
           company: "",
           date: dateGuess,
+          trustScore: computeTrustScoreFromSource(source),
           matchStatus: null,
         };
       case "signals":
