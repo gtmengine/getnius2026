@@ -59,13 +59,18 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { items, searchInformation } = await googleCseSearch(resolvedTab, query, start);
-    const results = normalizeCseItems(items, { tab: resolvedTab });
-    return NextResponse.json({ results, searchInformation });
+    const result = await googleCseSearch(resolvedTab, query, start);
+
+    if (!result.ok) {
+      return NextResponse.json({ results: [], error: result.error }, { status: result.status });
+    }
+
+    const results = normalizeCseItems(result.items, { tab: resolvedTab });
+    return NextResponse.json({ results, searchInformation: result.searchInformation });
   } catch (error) {
     console.error("Google CSE search error:", error);
     return NextResponse.json(
-      { error: "Google CSE request failed", results: [] },
+      { error: "google_cse_error", results: [] },
       { status: 502 },
     );
   }

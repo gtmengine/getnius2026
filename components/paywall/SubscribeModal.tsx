@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ChevronRight, Mail, Send, X } from 'lucide-react';
 
 interface SubscribeModalProps {
@@ -9,6 +9,57 @@ interface SubscribeModalProps {
 }
 
 export function SubscribeModal({ open, onClose }: SubscribeModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const firstRowRef = useRef<HTMLAnchorElement>(null);
+  const lastActiveElementRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    lastActiveElementRef.current = document.activeElement as HTMLElement | null;
+    firstRowRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const container = dialogRef.current;
+      if (!container) return;
+
+      const focusableElements = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => !element.hasAttribute('disabled'));
+
+      if (focusableElements.length === 0) return;
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey) {
+        if (active === first || active === container) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      lastActiveElementRef.current?.focus();
+    };
+  }, [onClose, open]);
+
   if (!open) return null;
 
   return (
@@ -20,6 +71,7 @@ export function SubscribeModal({ open, onClose }: SubscribeModalProps) {
         onClick={onClose}
       />
       <div
+        ref={dialogRef}
         className="relative w-[92vw] max-w-[560px] rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:w-full sm:px-9 sm:py-8 max-h-[85vh] overflow-y-auto"
         role="dialog"
         aria-modal="true"
@@ -49,6 +101,7 @@ export function SubscribeModal({ open, onClose }: SubscribeModalProps) {
               href="https://substack.com/@getnius"
               target="_blank"
               rel="noopener noreferrer"
+              ref={firstRowRef}
               className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/60 px-5 py-4 transition hover:border-purple-300 hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
             >
               <div className="flex items-center gap-4">

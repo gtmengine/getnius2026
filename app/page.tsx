@@ -44,6 +44,7 @@ import { AuthModal } from '@/components/paywall/AuthModal';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { RowDetailsSidebar } from '@/components/ui/row-details-sidebar';
 import { mapRowToSidebarModel } from '@/lib/row-details';
+import { buildMockRowsForTab } from '@/lib/mock-search';
 
 // Icon map for tabs
 const iconMap = {
@@ -175,6 +176,20 @@ const coerceValueByType = (value: string, type: ColumnKind) => {
   return value;
 };
 
+const SEARCH_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const SEARCH_COOLDOWN_MS = 30 * 60 * 1000;
+const IS_MOCK_SEARCH_MODE = (process.env.NEXT_PUBLIC_SEARCH_MODE ?? 'mock') !== 'google';
+const MOCK_ROW_COUNT = 50;
+
+type SearchErrorPayload = {
+  error?: "quota_exceeded" | "google_cse_error" | string;
+  status?: number;
+};
+
+const normalizeSearchQuery = (value: string) => value.trim().toLowerCase();
+const makeSearchCacheKey = (tab: TabId, value: string) =>
+  `${tab}::${normalizeSearchQuery(value)}`;
+
 // ============================================================================
 // SearchHeader Component
 // ============================================================================
@@ -183,11 +198,12 @@ interface SearchHeaderProps {
   onQueryChange: (value: string) => void;
   onSearch: () => void;
   isSearching: boolean;
+  isCooldown: boolean;
 }
 
-function SearchHeader({ query, onQueryChange, onSearch, isSearching }: SearchHeaderProps) {
+function SearchHeader({ query, onQueryChange, onSearch, isSearching, isCooldown }: SearchHeaderProps) {
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !isSearching) {
+    if (e.key === 'Enter' && !isSearching && !isCooldown) {
       onSearch();
     }
   };
@@ -210,7 +226,7 @@ function SearchHeader({ query, onQueryChange, onSearch, isSearching }: SearchHea
           </div>
           <button
             onClick={onSearch}
-            disabled={isSearching || !query.trim()}
+            disabled={isSearching || isCooldown || !query.trim()}
             className="px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:from-indigo-400 disabled:to-indigo-400 text-white rounded-xl font-semibold flex items-center gap-2.5 transition-all shadow-sm hover:shadow-md disabled:cursor-not-allowed min-w-[140px] justify-center"
           >
             {isSearching ? (
@@ -1052,6 +1068,8 @@ function ResultsPanel({
 export default function Page() {
   // State
   const [query, setQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [searchRequestId, setSearchRequestId] = useState(0);
   const [activeTab, setActiveTab] = useState<TabId>('companies');
   const [isSearching, setIsSearching] = useState(false);
   const [columnDefsByTab, setColumnDefsByTab] = useState<Record<TabId, ColDef[]>>(() => {
@@ -1081,6 +1099,8 @@ export default function Page() {
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
   const [sidebarState, setSidebarState] = useState<{ tab: TabId; row: any } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [quotaError, setQuotaError] = useState(false);
+  const [searchCooldownUntil, setSearchCooldownUntil] = useState<number | null>(null);
   const [searchProgress, setSearchProgress] = useState<string | null>(null);
   const [isMatchActive, setIsMatchActive] = useState(false);
   const [paintMode, setPaintMode] = useState<'match' | 'not-match' | null>(null);
@@ -1094,6 +1114,17 @@ export default function Page() {
   const [paywallArmedFor, setPaywallArmedFor] = useState<{ tab: TabId; token: number } | null>(null);
   const paywallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const paywallTimerTokenRef = useRef<number | null>(null);
+  const isPaywallOpenRef = useRef(false);
+  const isSubscribeOpenRef = useRef(false);
+  const activeTabRef = useRef(activeTab);
+  // In-memory cache to reduce repeated CSE calls for the same tab/query.
+  const searchCacheRef = useRef(
+    new Map<string, { cachedAt: number; items: any[]; error?: SearchErrorPayload | string | null }>(),
+  );
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchTokenRef = useRef(0);
+  const inFlightKeyRef = useRef<string | null>(null);
+  const inFlightPromiseRef = useRef<Promise<void> | null>(null);
 
   // News filter states
   const [significanceMin, setSignificanceMin] = useState<number>(() => {
@@ -1117,8 +1148,36 @@ export default function Page() {
     }
     return 1.0;
   });
+
+  const buildMockResults = (searchQuery: string) => {
+    const next = {} as Record<TabId, any[]>;
+    tabConfigs.forEach((tab) => {
+      next[tab.id] = buildMockRowsForTab(tab.id, MOCK_ROW_COUNT, searchQuery);
+    });
+    return next;
+  };
   
   const gridRef = useRef<AgGridWrapperRef | null>(null);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    isPaywallOpenRef.current = isPaywallOpen;
+    isSubscribeOpenRef.current = isSubscribeOpen;
+  }, [isPaywallOpen, isSubscribeOpen]);
+
+  useEffect(() => {
+    if (!searchCooldownUntil) return;
+    const remaining = searchCooldownUntil - Date.now();
+    if (remaining <= 0) {
+      setSearchCooldownUntil(null);
+      return;
+    }
+    const timer = setTimeout(() => setSearchCooldownUntil(null), remaining);
+    return () => clearTimeout(timer);
+  }, [searchCooldownUntil]);
 
   // Persist slider values to localStorage
   useEffect(() => {
@@ -1172,7 +1231,12 @@ export default function Page() {
 
     paywallTimerTokenRef.current = paywallArmedFor.token;
     paywallTimerRef.current = setTimeout(() => {
+      if (isPaywallOpenRef.current || isSubscribeOpenRef.current) {
+        paywallTimerRef.current = null;
+        return;
+      }
       setIsPaywallOpen(true);
+      paywallTimerRef.current = null;
     }, 7000);
 
     return () => {
@@ -1235,13 +1299,152 @@ export default function Page() {
     'research-papers': searchedTabs['research-papers'] ? filteredResults['research-papers'].length : 0,
   }), [filteredResults, searchedTabs]);
   
+  const applySearchResults = useCallback(
+    (tab: TabId, items: any[], errorPayload?: SearchErrorPayload | string | null) => {
+      setResults((prevResults) => ({
+        ...prevResults,
+        [tab]: items,
+      }));
+      setSearchedTabs((prevTabs) => ({
+        ...prevTabs,
+        [tab]: true,
+      }));
+
+      const normalizedError =
+        typeof errorPayload === 'string' ? { error: errorPayload } : errorPayload || null;
+
+      if (normalizedError?.error === 'quota_exceeded' || normalizedError?.status === 429) {
+        setQuotaError(true);
+        setSearchCooldownUntil(Date.now() + SEARCH_COOLDOWN_MS);
+        setError(null);
+      } else {
+        setQuotaError(false);
+        setError(normalizedError?.error ?? (normalizedError ? 'Search failed. Please try again.' : null));
+      }
+    },
+    [setResults, setSearchedTabs, setError, setQuotaError, setSearchCooldownUntil],
+  );
+
+  const fetchTabResults = useCallback(
+    async (tab: TabId, searchQuery: string, signal?: AbortSignal) => {
+      const trimmedQuery = searchQuery.trim();
+      if (!trimmedQuery) return;
+
+      const cacheKey = makeSearchCacheKey(tab, trimmedQuery);
+      const now = Date.now();
+
+      // Serve cached results when fresh to avoid extra API calls.
+      const cached = searchCacheRef.current.get(cacheKey);
+      if (cached && now - cached.cachedAt < SEARCH_CACHE_TTL_MS) {
+        applySearchResults(tab, cached.items, cached.error ?? null);
+        return;
+      }
+      if (searchCooldownUntil && searchCooldownUntil > Date.now()) return;
+
+      if (inFlightKeyRef.current === cacheKey && inFlightPromiseRef.current) {
+        return inFlightPromiseRef.current;
+      }
+
+      const token = ++searchTokenRef.current;
+
+      const requestPromise = (async () => {
+        setIsSearching(true);
+        setError(null);
+        setQuotaError(false);
+
+        try {
+          const response = await fetch('/api/google-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: trimmedQuery, tab }),
+            signal,
+          });
+
+          const data = await response.json().catch(() => ({}));
+          if (token !== searchTokenRef.current) return;
+
+          if (!response.ok) {
+            if (IS_MOCK_SEARCH_MODE) {
+              const fallbackItems = buildMockRowsForTab(tab, MOCK_ROW_COUNT, trimmedQuery);
+              searchCacheRef.current.set(cacheKey, {
+                cachedAt: now,
+                items: fallbackItems,
+                error: null,
+              });
+              applySearchResults(tab, fallbackItems, null);
+              return;
+            }
+            const errorPayload = {
+              error: data?.error ?? 'google_cse_error',
+              status: response.status,
+            };
+            if (Array.isArray(data?.items)) {
+              const fallbackItems = normalizeCseItems(data.items, { tab });
+              searchCacheRef.current.set(cacheKey, {
+                cachedAt: now,
+                items: fallbackItems,
+                error: errorPayload,
+              });
+              applySearchResults(tab, fallbackItems, errorPayload);
+            } else {
+              applySearchResults(tab, [], errorPayload);
+            }
+            return;
+          }
+
+          const items = Array.isArray(data?.items) ? data.items : [];
+          const normalizedItems =
+            data?.source === 'mock'
+              ? buildMockRowsForTab(tab, MOCK_ROW_COUNT, trimmedQuery)
+              : normalizeCseItems(items, { tab });
+          searchCacheRef.current.set(cacheKey, {
+            cachedAt: now,
+            items: normalizedItems,
+            error: null,
+          });
+          applySearchResults(tab, normalizedItems, null);
+        } catch (error) {
+          if ((error as DOMException).name === 'AbortError') {
+            return;
+          }
+          console.error('Search request failed:', error);
+          if (token !== searchTokenRef.current) return;
+          if (IS_MOCK_SEARCH_MODE) {
+            const fallbackItems = buildMockRowsForTab(tab, MOCK_ROW_COUNT, trimmedQuery);
+            searchCacheRef.current.set(cacheKey, {
+              cachedAt: now,
+              items: fallbackItems,
+              error: null,
+            });
+            applySearchResults(tab, fallbackItems, null);
+            return;
+          }
+          applySearchResults(tab, [], 'Search failed. Please try again.');
+        } finally {
+          if (token === searchTokenRef.current) {
+            setIsSearching(false);
+            setPaywallArmedFor({ tab, token: Date.now() });
+          }
+          if (inFlightKeyRef.current === cacheKey) {
+            inFlightKeyRef.current = null;
+            inFlightPromiseRef.current = null;
+          }
+        }
+      })();
+
+      inFlightKeyRef.current = cacheKey;
+      inFlightPromiseRef.current = requestPromise;
+      return requestPromise;
+    },
+    [applySearchResults, searchCooldownUntil],
+  );
+
   // Search handler
-  const handleSearch = useCallback(async () => {
+  const handleSearch = useCallback(() => {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) return;
+    if (searchCooldownUntil && searchCooldownUntil > Date.now()) return;
 
-    setIsSearching(true);
-    setError(null);
     setSelectedRows([]);
     setIsPaywallOpen(false);
     setIsSubscribeOpen(false);
@@ -1251,60 +1454,50 @@ export default function Page() {
     }
     paywallTimerTokenRef.current = null;
 
-    try {
-      const tabsToSearch = tabConfigs.map((tab) => tab.id);
-
-      const fetchTabResults = async (tab: TabId) => {
-        try {
-          const response = await fetch('/api/google-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: trimmedQuery, tab }),
-          });
-
-          const data = await response.json().catch(() => ({}));
-
-          if (!response.ok) {
-            return { tab, items: [], error: data?.error || 'Search failed. Please try again.' };
-          }
-
-          return { tab, items: Array.isArray(data?.items) ? data.items : [], error: data?.error };
-        } catch (error) {
-          console.error(`Search request failed for ${tab}:`, error);
-          return { tab, items: [], error: 'Search failed. Please try again.' };
-        }
-      };
-
-      const tabResponses = await Promise.all(tabsToSearch.map(fetchTabResults));
-      const nextResults = tabResponses.reduce((acc, { tab, items }) => {
-        acc[tab] = normalizeCseItems(items, { tab });
+    setSubmittedQuery(trimmedQuery);
+    setSearchRequestId((prev) => prev + 1);
+    if (IS_MOCK_SEARCH_MODE) {
+        setError(null);
+        setQuotaError(false);
+        setResults(buildMockResults(trimmedQuery));
+        setSearchedTabs(() =>
+          tabConfigs.reduce((acc, tab) => {
+            acc[tab.id] = true;
+            return acc;
+          }, {} as Record<TabId, boolean>),
+        );
+        setIsSearching(false);
+        setPaywallArmedFor({ tab: activeTabRef.current, token: Date.now() });
+        return;
+      }
+    setResults((prevResults) => {
+      const next = { ...prevResults } as Record<TabId, any[]>;
+      tabConfigs.forEach((tab) => {
+        next[tab.id] = [];
+      });
+      return next;
+    });
+    setSearchedTabs(() =>
+      tabConfigs.reduce((acc, tab) => {
+        acc[tab.id] = false;
         return acc;
-      }, {} as Record<TabId, any[]>);
-      const nextSearchedTabs = tabsToSearch.reduce((acc, tab) => {
-        acc[tab] = true;
-        return acc;
-      }, {} as Record<TabId, boolean>);
-      const activeResponse = tabResponses.find((response) => response.tab === activeTab);
+      }, {} as Record<TabId, boolean>),
+    );
+  }, [query, searchCooldownUntil, setResults]);
 
-      setResults(nextResults);
-      setSearchedTabs(nextSearchedTabs);
-      setError(activeResponse?.error ?? null);
-    } catch (error) {
-      console.error('Search request failed:', error);
-      setError('Search failed. Please try again.');
-      setResults((prevResults) => ({
-        ...prevResults,
-        [activeTab]: [],
-      }));
-      setSearchedTabs((prevTabs) => ({
-        ...prevTabs,
-        [activeTab]: true,
-      }));
-    } finally {
-      setIsSearching(false);
-      setPaywallArmedFor({ tab: activeTab, token: Date.now() });
-    }
-  }, [activeTab, query, setResults]);
+  useEffect(() => {
+    if (IS_MOCK_SEARCH_MODE) return;
+    if (!submittedQuery) return;
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    void fetchTabResults(activeTabRef.current, submittedQuery, controller.signal);
+    return () => {
+      controller.abort();
+      inFlightKeyRef.current = null;
+      inFlightPromiseRef.current = null;
+    };
+  }, [activeTab, submittedQuery, searchRequestId, fetchTabResults, searchCooldownUntil]);
   
   // Tab change handler
   const handleTabChange = useCallback((tab: TabId) => {
@@ -1583,6 +1776,7 @@ export default function Page() {
           onQueryChange={setQuery}
           onSearch={handleSearch}
           isSearching={isSearching}
+          isCooldown={Boolean(searchCooldownUntil && searchCooldownUntil > Date.now())}
         />
         
         {/* Category Tabs */}
@@ -1593,7 +1787,13 @@ export default function Page() {
             resultCounts={resultCounts}
           />
         </div>
-        
+
+        {quotaError && (
+          <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+            Google Search quota exceeded. Try again later.
+          </div>
+        )}
+
         {/* Error Message */}
         {error && (
           <div className="px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
@@ -1672,6 +1872,8 @@ export default function Page() {
         open={isPaywallOpen}
         onClose={() => setIsPaywallOpen(false)}
         onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenSubscribe={() => setIsSubscribeOpen(true)}
+        isSubscribeOpen={isSubscribeOpen}
       />
       <SubscribeModal open={isSubscribeOpen} onClose={() => setIsSubscribeOpen(false)} />
       <AuthModal open={isAuthOpen} onClose={() => setIsAuthOpen(false)} />

@@ -8,6 +8,20 @@ export type GoogleCseItem = {
   pagemap?: Record<string, unknown>;
 };
 
+export type GoogleCseSearchResult =
+  | {
+      ok: true;
+      status: number;
+      items: GoogleCseItem[];
+      searchInformation?: Record<string, unknown>;
+    }
+  | {
+      ok: false;
+      status: number;
+      items: [];
+      error: "quota_exceeded" | "google_cse_error";
+    };
+
 type GoogleCseResponse = {
   items?: GoogleCseItem[];
   searchInformation?: Record<string, unknown>;
@@ -44,10 +58,7 @@ export async function googleCseSearch(
   tab: TabId,
   query: string,
   start?: number,
-): Promise<{
-  items: GoogleCseItem[];
-  searchInformation?: Record<string, unknown>;
-}> {
+): Promise<GoogleCseSearchResult> {
   const apiKey = process.env.GOOGLE_API_KEY;
   const cseId = process.env.GOOGLE_CSE_ID;
 
@@ -71,11 +82,41 @@ export async function googleCseSearch(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Google CSE error: ${response.status} ${errorText}`);
+    if (response.status === 429) {
+      return {
+        ok: false,
+        status: 429,
+        items: [],
+        error: "quota_exceeded",
+      };
+    }
+
+    if (response.status >= 500) {
+      throw new Error(`Google CSE error: ${response.status} ${errorText}`);
+    }
+
+    return {
+      ok: false,
+      status: response.status,
+      items: [],
+      error: "google_cse_error",
+    };
   }
 
-  const data = (await response.json()) as GoogleCseResponse;
+  let data: GoogleCseResponse;
+  try {
+    data = (await response.json()) as GoogleCseResponse;
+  } catch (error) {
+    throw new Error("Google CSE returned malformed JSON");
+  }
+
+  if (!data || typeof data !== "object") {
+    throw new Error("Google CSE returned malformed response");
+  }
+
   return {
+    ok: true,
+    status: response.status,
     items: data.items ?? [],
     searchInformation: data.searchInformation,
   };
