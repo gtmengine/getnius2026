@@ -1,136 +1,154 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { Calendar, Lock, Mail, Sparkles, X } from 'lucide-react';
-import type { PlanOption, PaywallPlanId } from './types';
+import React, { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
+import type { PaywallPlanId } from './types';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 interface PaywallModalProps {
   open: boolean;
   onClose: () => void;
   onOpenAuth: () => void;
+  onOpenSubscribe?: () => void;
+  isSubscribeOpen?: boolean;
 }
 
-const planOptions: PlanOption[] = [
+const planOptions: Array<{
+  id: PaywallPlanId;
+  title: string;
+  priceLine: string;
+  secondaryPriceLine?: string;
+  highlighted?: boolean;
+}> = [
   {
-    id: 'enterprise',
-    title: 'Demo with Founder',
-    priceLine: 'Custom solution',
-    lines: ['15-minute intro'],
+    id: 'pro',
+    title: 'Unlimited Access',
+    priceLine: '$50/mo',
+    secondaryPriceLine: 'or $90/qtr',
+    highlighted: true,
   },
   {
     id: 'free',
-    title: 'Free Subscribe',
-    priceLine: 'Daily updates',
-    lines: ['Email or Telegram delivery'],
-  },
-  {
-    id: 'pro',
-    title: 'Pro Access',
-    priceLine: '$50/month or $90/quarter*',
-    lines: ['Unlimited searches', 'Advanced enrichment', 'Priority API access'],
+    title: 'Daily Updates',
+    priceLine: 'Free',
   },
 ];
 
-const handlePlanKeyDown = (
-  event: React.KeyboardEvent<HTMLDivElement>,
-  action: () => void
-) => {
-  if (event.key === 'Enter' || event.key === ' ') {
-    event.preventDefault();
-    action();
-  }
-};
+export function PaywallModal({
+  open,
+  onClose,
+  onOpenAuth,
+  onOpenSubscribe,
+  isSubscribeOpen = false,
+}: PaywallModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PaywallPlanId>('pro');
+  const handleGoogleSignIn = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      console.log('TODO: implement Google auth');
+      return;
+    }
 
-export function PaywallModal({ open, onClose, onOpenAuth }: PaywallModalProps) {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    if (error) {
+      console.error('Google sign-in failed', error);
+    }
+  };
+
   useEffect(() => {
-    if (!open) return;
+    if (!open || isSubscribeOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const container = dialogRef.current;
+      if (!container) return;
+
+      const focusableElements = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => !element.hasAttribute('disabled'));
+
+      if (focusableElements.length === 0) return;
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey) {
+        if (active === first || active === container) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (active === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
+    closeButtonRef.current?.focus();
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, open]);
+  }, [isSubscribeOpen, onClose, open]);
 
   if (!open) return null;
 
-  const handlePlanSelect = (planId: PaywallPlanId) => {
-    if (planId === 'free') {
-      onOpenAuth();
-    }
-  };
-
-  const iconMap: Record<PaywallPlanId, React.ElementType> = {
-    enterprise: Calendar,
-    free: Mail,
-    pro: Sparkles,
-  };
-
   const PlanCard = ({
     plan,
-    highlighted,
+    isSelected,
+    onSelect,
   }: {
-    plan: PlanOption;
-    highlighted?: boolean;
-  }) => {
-    const Icon = iconMap[plan.id];
-    const action = () => handlePlanSelect(plan.id);
-    return (
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={action}
-        onKeyDown={(event) => handlePlanKeyDown(event, action)}
-        aria-label={`Select ${plan.title} plan`}
-        className={`flex h-full min-h-[200px] cursor-pointer flex-col gap-4 rounded-2xl border bg-white px-6 py-6 text-left shadow-sm transition-colors transition-shadow motion-safe:duration-200 motion-safe:transition-shadow motion-safe:transition-colors hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:min-h-[220px] sm:px-7 sm:py-7 ${
-          highlighted
-            ? 'border-violet-400 bg-violet-50/30 shadow-[0_16px_36px_rgba(124,58,237,0.18)] ring-1 ring-violet-200'
-            : 'border-slate-200 hover:border-slate-300 hover:shadow-[0_12px_30px_rgba(15,23,42,0.12)]'
-        }`}
-      >
-        <div className="flex items-start gap-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-50 text-violet-600">
-            <Icon className="h-4 w-4" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-3">
-              <span className="block text-base font-semibold leading-snug text-slate-900 sm:text-lg">
-                {plan.title}
-              </span>
-            </div>
-          </div>
-        </div>
-        <span className="text-[15px] font-semibold leading-5 text-violet-600 sm:text-base">
-          {plan.priceLine}
-        </span>
-        {plan.id === 'pro' ? (
-          <ul className="space-y-2 text-sm text-slate-600 sm:text-[15px]">
-            {plan.lines.map((line) => (
-              <li key={line} className="flex items-start gap-2">
-                <span className="mt-2 h-1.5 w-1.5 rounded-full bg-slate-400" />
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="space-y-1.5 text-sm text-slate-600 sm:text-[15px]">
-            {plan.lines.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
-        )}
+    plan: (typeof planOptions)[number];
+    isSelected: boolean;
+    onSelect: () => void;
+  }) => (
+    <button
+      type="button"
+      onClick={onSelect}
+      role="radio"
+      aria-checked={isSelected}
+      className={`relative flex min-h-[140px] w-full flex-col justify-between gap-4 rounded-2xl border bg-white px-5 py-5 text-left shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:px-6 sm:py-6 ${
+        isSelected
+          ? 'border-slate-300 bg-slate-50 ring-1 ring-slate-300 shadow-sm'
+          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+      }`}
+    >
+      <div className="space-y-2">
+        <p className="text-base font-semibold text-slate-900 sm:text-lg">{plan.title}</p>
+        <p className="text-sm text-slate-500">
+          {plan.id === 'pro'
+            ? 'Full access to every search result.'
+            : 'Daily email + Telegram highlights.'}
+        </p>
       </div>
-    );
-  };
+      <div className="mt-6">
+        <p
+          className={`text-lg font-semibold tracking-tight leading-none whitespace-nowrap sm:text-xl ${
+            isSelected ? 'text-slate-900' : 'text-slate-700'
+          }`}
+        >
+          {plan.secondaryPriceLine
+            ? `${plan.priceLine} ${plan.secondaryPriceLine}`
+            : plan.priceLine}
+        </p>
+      </div>
+    </button>
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
       <div
-        className="relative w-[94vw] max-w-[820px] rounded-3xl border border-slate-200/80 bg-white px-7 py-7 shadow-[0_32px_100px_rgba(15,23,42,0.24)] sm:w-full sm:px-8 sm:py-8 max-h-[90vh] overflow-y-auto sm:max-h-[85vh]"
+        ref={dialogRef}
+        className="relative w-[94vw] max-w-[520px] rounded-3xl border border-slate-200/80 bg-white px-6 py-6 shadow-[0_24px_80px_rgba(15,23,42,0.22)] sm:w-full sm:px-8 sm:py-8 max-h-[90vh] overflow-y-auto"
         role="dialog"
         aria-modal="true"
         aria-labelledby="paywall-title"
@@ -138,88 +156,86 @@ export function PaywallModal({ open, onClose, onOpenAuth }: PaywallModalProps) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors transition-shadow motion-safe:duration-200 hover:bg-slate-50 hover:text-slate-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          ref={closeButtonRef}
+          className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors transition-shadow motion-safe:duration-200 hover:bg-slate-50 hover:text-slate-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           aria-label="Close paywall"
         >
           <X className="h-4 w-4" />
         </button>
-        <div className="flex flex-col divide-y divide-slate-200/70">
-          <div className="pb-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600">
-                <Lock className="h-5 w-5" />
-              </div>
-              <div>
-                <h2
-                  id="paywall-title"
-                  className="text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl"
-                >
-                  Unlock Full Intelligence
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  Sign in to access all results and premium features
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="py-6 sm:py-7">
-            <div className="flex flex-col items-center gap-3">
-              <div className="flex w-full flex-col items-center gap-3 sm:flex-row sm:justify-center">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors transition-shadow motion-safe:duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:w-auto sm:min-w-[280px]"
-                >
-                  <span className="flex h-5 w-5 items-center justify-center">
-                    <svg
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      className="h-5 w-5"
-                    >
-                      <path
-                        d="M23.5 12.3c0-.8-.1-1.5-.2-2.2H12v4.2h6.5c-.3 1.6-1.2 2.9-2.5 3.8v3h4c2.3-2.1 3.5-5.2 3.5-8.8z"
-                        fill="#4285F4"
-                      />
-                      <path
-                        d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-4-3c-1.1.7-2.5 1.1-3.9 1.1-3 0-5.5-2-6.4-4.7H1.4v3.1C3.4 21.5 7.4 24 12 24z"
-                        fill="#34A853"
-                      />
-                      <path
-                        d="M5.6 14.5c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3V6.8H1.4C.5 8.6 0 10.6 0 12.2s.5 3.6 1.4 5.4l4.2-3.1z"
-                        fill="#FBBC05"
-                      />
-                      <path
-                        d="M12 4.7c1.7 0 3.3.6 4.5 1.7l3.3-3.3C17.9 1.2 15.2 0 12 0 7.4 0 3.4 2.5 1.4 6.8l4.2 3.1C6.5 6.7 9 4.7 12 4.7z"
-                        fill="#EA4335"
-                      />
-                    </svg>
-                  </span>
-                  <span>Sign in with Google</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenAuth}
-                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors transition-shadow motion-safe:duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:w-auto sm:min-w-[280px]"
-                >
-                  <Mail className="h-5 w-5 text-slate-700" />
-                  <span>Continue with Email</span>
-                </button>
-              </div>
-              <p className="text-center text-xs text-slate-500">
-                Secure authentication • No credit card required
-              </p>
-            </div>
-          </div>
-
-          <div className="pt-6 sm:pt-7">
-            <p className="text-sm font-semibold text-slate-900">
-              Or choose a plan directly:
+        <div className="flex flex-col gap-6">
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              UNLOCK FULL ACCESS
             </p>
-            <div className="mt-4 grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-3">
-              {planOptions.map((plan) => (
-                <PlanCard key={plan.id} plan={plan} highlighted={plan.id === 'pro'} />
-              ))}
-            </div>
+            <h2
+              id="paywall-title"
+              className="text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl"
+            >
+              Your preview ended.
+            </h2>
+            <p className="text-sm text-slate-600">
+              Pick how you want to keep getting results.
+            </p>
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              aria-label="Sign in with Google"
+              className="mt-4 flex h-12 w-full items-center justify-center gap-3 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            >
+              <svg
+                aria-hidden="true"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M23.49 12.27c0-.79-.07-1.54-.2-2.27H12v4.29h6.47a5.54 5.54 0 0 1-2.4 3.63v3.01h3.88c2.27-2.09 3.54-5.17 3.54-8.66Z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.92l-3.88-3.01c-1.08.73-2.46 1.17-4.05 1.17-3.12 0-5.76-2.11-6.7-4.95H1.29v3.11A12 12 0 0 0 12 24Z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M5.3 14.29a7.19 7.19 0 0 1 0-4.58V6.6H1.29a12 12 0 0 0 0 10.8l4.01-3.11Z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M12 4.76c1.77 0 3.35.61 4.6 1.8l3.45-3.45C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.29 6.6l4.01 3.11C6.24 6.87 8.88 4.76 12 4.76Z"
+                  fill="#EA4335"
+                />
+              </svg>
+              Sign in with Google
+            </button>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Choose a plan">
+            {planOptions.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                isSelected={selectedPlan === plan.id}
+                onSelect={() => {
+                  setSelectedPlan(plan.id);
+                  if (plan.id === 'free') {
+                    onOpenSubscribe?.();
+                  }
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="flex w-full justify-center">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            >
+              Demo with founder
+            </button>
           </div>
         </div>
       </div>
