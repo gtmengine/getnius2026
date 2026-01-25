@@ -30,6 +30,7 @@ import { columnDefsMap, getExportColumnsForTab, TabId, tabConfigs } from '@/lib/
 import { ColDef } from 'ag-grid-community';
 import {
   ColumnKind,
+  EnrichmentColumnConfig,
   StoredColumnDef,
   loadStoredColumnDefs,
   saveStoredColumnDefs,
@@ -83,6 +84,20 @@ const LinkRenderer = (params: any) => {
       onClick={(event) => event.stopPropagation()}
     >
       {url}
+    </a>
+  );
+};
+
+const EmailRenderer = (params: any) => {
+  const value = params.value;
+  if (!value) return <span className="text-gray-400">N/A</span>;
+  return (
+    <a
+      href={`mailto:${value}`}
+      className="block truncate text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+      onClick={(event) => event.stopPropagation()}
+    >
+      {value}
     </a>
   );
 };
@@ -150,6 +165,14 @@ const buildCustomColumnDef = (stored: StoredColumnDef): CustomColDef => {
     base.cellRenderer = LinkRenderer;
   }
 
+  if (stored.type === 'url') {
+    base.cellRenderer = LinkRenderer;
+  }
+
+  if (stored.type === 'email') {
+    base.cellRenderer = EmailRenderer;
+  }
+
   return base;
 };
 
@@ -167,13 +190,11 @@ const getAllColumnFields = (columns: ColDef[]) =>
     .map((col) => col.field)
     .filter((field): field is string => Boolean(field));
 
-const coerceValueByType = (value: string, type: ColumnKind) => {
-  if (type === 'number') {
-    if (!value) return '';
-    const parsed = Number(value);
-    return Number.isNaN(parsed) ? '' : parsed;
-  }
-  return value;
+const getDefaultValueForType = (type: ColumnKind) => {
+  if (type === 'number') return '';
+  if (type === 'checkbox') return false;
+  if (type === 'multi-select') return [];
+  return '';
 };
 
 const SEARCH_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -1081,6 +1102,14 @@ export default function Page() {
     });
     return map;
   });
+  const [enrichmentColumnConfigsByTab, setEnrichmentColumnConfigsByTab] = useState<
+    Record<TabId, Record<string, EnrichmentColumnConfig>>
+  >(() => {
+    return tabConfigs.reduce((acc, tab) => {
+      acc[tab.id] = {};
+      return acc;
+    }, {} as Record<TabId, Record<string, EnrichmentColumnConfig>>);
+  });
   const [rowDataByTab, setRowDataByTab] = useState<Record<TabId, any[]>>(() => {
     const map = {} as Record<TabId, any[]>;
     tabConfigs.forEach((tab) => {
@@ -1595,7 +1624,10 @@ export default function Page() {
     headerName: string;
     field: string;
     type: ColumnKind;
-    defaultValue: string;
+    prompt: string;
+    formatInstructions: string;
+    contextScope: { mode: 'all' | 'selected'; columns: string[] };
+    restrictSources: boolean;
   }) => {
     const newColumn: CustomColDef = buildCustomColumnDef({
       headerName: payload.headerName,
@@ -1614,7 +1646,7 @@ export default function Page() {
     setResults(prevResults => {
       const newResults = { ...prevResults };
       const tabData = [...newResults[activeTab]];
-      const defaultValue = coerceValueByType(payload.defaultValue, payload.type);
+      const defaultValue = getDefaultValueForType(payload.type);
 
       newResults[activeTab] = tabData.map(row => ({
         ...row,
@@ -1623,7 +1655,22 @@ export default function Page() {
 
       return newResults;
     });
-  }, [activeTab, setColumnDefsByTab, setResults]);
+    setEnrichmentColumnConfigsByTab((prev) => ({
+      ...prev,
+      [activeTab]: {
+        ...prev[activeTab],
+        [payload.field]: {
+          columnName: payload.headerName,
+          columnKey: payload.field,
+          dataType: payload.type,
+          prompt: payload.prompt,
+          formatInstructions: payload.formatInstructions,
+          contextScope: payload.contextScope,
+          restrictSources: payload.restrictSources,
+        },
+      },
+    }));
+  }, [activeTab, setColumnDefsByTab, setResults, setEnrichmentColumnConfigsByTab]);
 
 
   // Paint Mode Toggle Handlers
@@ -1856,6 +1903,12 @@ export default function Page() {
           open={isAddColumnOpen}
           onOpenChange={setIsAddColumnOpen}
           existingFields={existingFields}
+          existingColumns={activeDataColumns
+            .filter((col) => col.field)
+            .map((col) => ({
+              field: col.field as string,
+              headerName: col.headerName || '',
+            }))}
           onSubmit={handleAddColumnSubmit}
         />
 

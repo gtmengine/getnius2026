@@ -28,7 +28,15 @@ const getFieldType = (
   if (columnType === 'number' || colDef.type === 'number') {
     return 'number';
   }
-  if (columnType === 'badge' || columnType === 'link') {
+  if (
+    columnType === 'badge' ||
+    columnType === 'link' ||
+    columnType === 'url' ||
+    columnType === 'email' ||
+    columnType === 'select' ||
+    columnType === 'multi-select' ||
+    columnType === 'checkbox'
+  ) {
     return 'text';
   }
 
