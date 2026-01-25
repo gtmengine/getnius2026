@@ -2,7 +2,31 @@ import { TabId } from './grid-columns';
 
 export type TabKey = TabId;
 
-export type ColumnKind = 'text' | 'number' | 'badge' | 'link';
+export type ColumnKind =
+  | 'text'
+  | 'number'
+  | 'checkbox'
+  | 'url'
+  | 'email'
+  | 'select'
+  | 'multi-select'
+  | 'badge'
+  | 'link';
+
+export type EnrichmentContextScope = {
+  mode: 'all' | 'selected';
+  columns: string[];
+};
+
+export type EnrichmentColumnConfig = {
+  columnName: string;
+  columnKey: string;
+  dataType: ColumnKind;
+  prompt?: string;
+  formatInstructions?: string;
+  contextScope: EnrichmentContextScope;
+  restrictSources: boolean;
+};
 
 export interface StoredColumnDef {
   headerName: string;
