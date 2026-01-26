@@ -35,6 +35,7 @@ export interface AgGridWrapperProps {
   rowData: any[];
   columnDefs: ColDef[];
   onRowClick?: (data: any) => void;
+  onOpenRow?: (data: any) => void;
   onSelectionChanged?: (selectedRows: any[]) => void;
   onCellValueChanged?: (event: any) => void;
   onCellClicked?: (event: any) => void;
@@ -58,6 +59,7 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
   rowData,
   columnDefs,
   onRowClick,
+  onOpenRow,
   onSelectionChanged,
   onCellValueChanged,
   onCellClicked,
@@ -141,6 +143,10 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
     );
   }, [emptyMessage]);
 
+  const context = useMemo(() => ({
+    onOpenRow,
+  }), [onOpenRow]);
+
   return (
     <div className={`ag-theme-quartz ${className}`} style={{ height, width: '100%' }}>
       <style>{`
@@ -160,6 +166,7 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
         theme={customTheme}
         rowData={rowData}
         columnDefs={columnDefs}
+        context={context}
         onGridReady={onGridReady}
         onRowClicked={onRowClicked}
         onCellClicked={onCellClicked}

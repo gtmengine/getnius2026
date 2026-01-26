@@ -574,7 +574,7 @@ interface ResultsPanelProps {
   searchProgress?: string | null;
   emptyMessage: string;
   onCellClicked?: (event: any) => void;
-  onRowClick?: (row: any) => void;
+  onOpenRow?: (row: any) => void;
   paintMode: 'match' | 'not-match' | null;
 }
 
@@ -607,7 +607,7 @@ function ResultsPanel({
   getRowClass,
   searchProgress,
   emptyMessage,
-  onRowClick,
+  onOpenRow,
   paintMode
 }: ResultsPanelProps) {
   const columnDefs = useMemo(() => {
@@ -1072,7 +1072,7 @@ function ResultsPanel({
           onSelectionChanged={onSelectionChanged}
           onCellValueChanged={onCellValueChanged}
           onCellClicked={onCellClicked}
-          onRowClick={onRowClick}
+          onOpenRow={onOpenRow}
           onColumnHeaderDoubleClick={onColumnHeaderDoubleClick}
           emptyMessage={emptyMessage}
           rowSelection={{ mode: 'multiRow' }}
@@ -1538,7 +1538,7 @@ export default function Page() {
     setSidebarState(null);
   }, [activeTab]);
 
-  const handleRowClick = useCallback((row: any) => {
+  const handleOpenRow = useCallback((row: any) => {
     setSidebarState({ tab: activeTab, row });
   }, [activeTab]);
   
@@ -1857,7 +1857,7 @@ export default function Page() {
           onSelectionChanged={handleSelectionChanged}
           onCellValueChanged={handleCellValueChanged}
           onCellClicked={handleCellClicked}
-          onRowClick={handleRowClick}
+          onOpenRow={handleOpenRow}
           onAddColumn={() => setIsAddColumnOpen(true)}
           onAddRow={() => setIsAddRowOpen(true)}
           onMatch={toggleMatchPaintMode}
