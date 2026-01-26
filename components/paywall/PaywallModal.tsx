@@ -18,6 +18,8 @@ const planOptions: Array<{
   title: string;
   priceLine: string;
   secondaryPriceLine?: string;
+  disclaimer?: string;
+  footnote?: string;
   highlighted?: boolean;
 }> = [
   {
@@ -25,12 +27,14 @@ const planOptions: Array<{
     title: 'Unlimited Access',
     priceLine: '$50/mo',
     secondaryPriceLine: 'or $90/qtr',
+    disclaimer: '*No abuse policy, within rolling session budget',
     highlighted: true,
   },
   {
     id: 'free',
     title: 'Daily Updates',
     priceLine: 'Free',
+    footnote: 'Receive market updates related to your search',
   },
 ];
 
@@ -139,6 +143,16 @@ export function PaywallModal({
             ? `${plan.priceLine} ${plan.secondaryPriceLine}`
             : plan.priceLine}
         </p>
+        {plan.disclaimer ? (
+          <p className="mt-2 text-xs leading-snug text-slate-500 break-words">
+            {plan.disclaimer}
+          </p>
+        ) : null}
+        {plan.footnote ? (
+          <p className="mt-2 text-xs leading-snug text-slate-500 break-words">
+            {plan.footnote}
+          </p>
+        ) : null}
       </div>
     </button>
   );

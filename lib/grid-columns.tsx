@@ -171,11 +171,15 @@ const StatusRenderer = (params: any) => {
 // Action buttons renderer
 const ActionsRenderer = (params: any) => (
   <div className="flex items-center gap-2">
-    <button 
+    <button
+      type="button"
       className="px-3 py-1 text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors font-medium"
-      onClick={(e) => e.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        params.context?.onOpenRow?.(params.data);
+      }}
     >
-      Save
+      Open
     </button>
   </div>
 );
