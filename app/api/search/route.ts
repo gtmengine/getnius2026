@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { googleCseSearch } from "@/lib/googleCse";
+import { buildTabQuery, googleSearch } from "@/lib/google-search";
 import { normalizeCseItems } from "@/lib/google/normalize";
 import type { TabId } from "@/lib/grid-columns";
+import { buildMockRowsForTab } from "@/lib/mock-search";
+import { getSearchModeFromRequest } from "@/lib/search-mode";
 
 type SearchRequestBody = {
   query?: string;
@@ -48,18 +50,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!process.env.GOOGLE_API_KEY || !process.env.GOOGLE_CSE_ID) {
-    return NextResponse.json(
-      {
-        error: "Google CSE is not configured. Set GOOGLE_API_KEY and GOOGLE_CSE_ID.",
-        results: [],
-      },
-      { status: 500 },
-    );
+  const mode = getSearchModeFromRequest(request);
+  if (mode === "mock") {
+    const mockResults = buildMockRowsForTab(resolvedTab, 50, query);
+    return NextResponse.json({ results: mockResults, source: "mock", banner: "Using demo results" });
+  }
+
+  if (!process.env.GOOGLE_CSE_API_KEY || !process.env.GOOGLE_CSE_CX) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[search] Missing GOOGLE_CSE_API_KEY/GOOGLE_CSE_CX. Falling back to mock.");
+    }
+    const mockResults = buildMockRowsForTab(resolvedTab, 50, query);
+    return NextResponse.json({ results: mockResults, source: "mock", banner: "Using demo results" });
   }
 
   try {
-    const result = await googleCseSearch(resolvedTab, query, start);
+    const result = await googleSearch({ query: buildTabQuery(resolvedTab, query), start, num: 10 });
 
     if (!result.ok) {
       return NextResponse.json({ results: [], error: result.error }, { status: result.status });

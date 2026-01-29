@@ -25,11 +25,21 @@ To enable Google search functionality, you need to set up Google API credentials
 Create a `.env.local` file in your project root:
 
 ```env
-GOOGLE_API_KEY=your_actual_api_key_here
-GOOGLE_SEARCH_ENGINE_ID=your_actual_search_engine_id_here
+SEARCH_MODE=google
+NEXT_PUBLIC_SEARCH_MODE=google
+GOOGLE_CSE_API_KEY=your_actual_api_key_here
+GOOGLE_CSE_CX=your_actual_search_engine_id_here
 ```
 
-### 4. Restart Development Server
+`SEARCH_MODE` is the server-side source of truth. `NEXT_PUBLIC_SEARCH_MODE` is only used for client-side debug indicators.
+
+### 4. Add Vercel Environment Variables
+If you deploy on Vercel, add the same variables in your project settings:
+
+- `GOOGLE_CSE_API_KEY`
+- `GOOGLE_CSE_CX`
+
+### 5. Restart Development Server
 After adding environment variables, restart your dev server:
 
 ```bash

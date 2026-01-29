@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { LogoLandingLink } from '@/components/LogoLandingLink';
 import { 
   Search, 
   Upload, 
@@ -197,9 +198,9 @@ const getDefaultValueForType = (type: ColumnKind) => {
   return '';
 };
 
-const SEARCH_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const SEARCH_CACHE_TTL_MS = 15 * 60 * 1000;
 const SEARCH_COOLDOWN_MS = 30 * 60 * 1000;
-const IS_MOCK_SEARCH_MODE = (process.env.NEXT_PUBLIC_SEARCH_MODE ?? 'mock') !== 'google';
+const SEARCH_DEBOUNCE_MS = 700;
 const MOCK_ROW_COUNT = 50;
 
 type SearchErrorPayload = {
@@ -1129,6 +1130,10 @@ export default function Page() {
   const [sidebarState, setSidebarState] = useState<{ tab: TabId; row: any } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [quotaError, setQuotaError] = useState(false);
+  const [resolvedSearchMode, setResolvedSearchMode] = useState<'mock' | 'google'>(() =>
+    process.env.NEXT_PUBLIC_SEARCH_MODE === 'mock' ? 'mock' : 'google',
+  );
+  const [demoBanner, setDemoBanner] = useState<string | null>(null);
   const [searchCooldownUntil, setSearchCooldownUntil] = useState<number | null>(null);
   const [searchProgress, setSearchProgress] = useState<string | null>(null);
   const [isMatchActive, setIsMatchActive] = useState(false);
@@ -1154,6 +1159,7 @@ export default function Page() {
   const searchTokenRef = useRef(0);
   const inFlightKeyRef = useRef<string | null>(null);
   const inFlightPromiseRef = useRef<Promise<void> | null>(null);
+  const searchDebounceRef = useRef<number | null>(null);
 
   // News filter states
   const [significanceMin, setSignificanceMin] = useState<number>(() => {
@@ -1384,25 +1390,21 @@ export default function Page() {
         try {
           const response = await fetch('/api/google-search', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'x-search-route': typeof window !== 'undefined' ? window.location.pathname : '/',
+            },
             body: JSON.stringify({ query: trimmedQuery, tab }),
             signal,
           });
 
           const data = await response.json().catch(() => ({}));
           if (token !== searchTokenRef.current) return;
+          if (data?.source === 'mock' || data?.source === 'google') {
+            setResolvedSearchMode(data.source);
+          }
 
           if (!response.ok) {
-            if (IS_MOCK_SEARCH_MODE) {
-              const fallbackItems = buildMockRowsForTab(tab, MOCK_ROW_COUNT, trimmedQuery);
-              searchCacheRef.current.set(cacheKey, {
-                cachedAt: now,
-                items: fallbackItems,
-                error: null,
-              });
-              applySearchResults(tab, fallbackItems, null);
-              return;
-            }
             const errorPayload = {
               error: data?.error ?? 'google_cse_error',
               status: response.status,
@@ -1418,6 +1420,7 @@ export default function Page() {
             } else {
               applySearchResults(tab, [], errorPayload);
             }
+            setDemoBanner(typeof data?.banner === 'string' ? data.banner : null);
             return;
           }
 
@@ -1432,22 +1435,13 @@ export default function Page() {
             error: null,
           });
           applySearchResults(tab, normalizedItems, null);
+          setDemoBanner(typeof data?.banner === 'string' ? data.banner : null);
         } catch (error) {
           if ((error as DOMException).name === 'AbortError') {
             return;
           }
           console.error('Search request failed:', error);
           if (token !== searchTokenRef.current) return;
-          if (IS_MOCK_SEARCH_MODE) {
-            const fallbackItems = buildMockRowsForTab(tab, MOCK_ROW_COUNT, trimmedQuery);
-            searchCacheRef.current.set(cacheKey, {
-              cachedAt: now,
-              items: fallbackItems,
-              error: null,
-            });
-            applySearchResults(tab, fallbackItems, null);
-            return;
-          }
           applySearchResults(tab, [], 'Search failed. Please try again.');
         } finally {
           if (token === searchTokenRef.current) {
@@ -1469,7 +1463,7 @@ export default function Page() {
   );
 
   // Search handler
-  const handleSearch = useCallback(() => {
+  const runSearch = useCallback(() => {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) return;
     if (searchCooldownUntil && searchCooldownUntil > Date.now()) return;
@@ -1477,6 +1471,7 @@ export default function Page() {
     setSelectedRows([]);
     setIsPaywallOpen(false);
     setIsSubscribeOpen(false);
+    setDemoBanner(null);
     if (paywallTimerRef.current) {
       clearTimeout(paywallTimerRef.current);
       paywallTimerRef.current = null;
@@ -1485,20 +1480,6 @@ export default function Page() {
 
     setSubmittedQuery(trimmedQuery);
     setSearchRequestId((prev) => prev + 1);
-    if (IS_MOCK_SEARCH_MODE) {
-        setError(null);
-        setQuotaError(false);
-        setResults(buildMockResults(trimmedQuery));
-        setSearchedTabs(() =>
-          tabConfigs.reduce((acc, tab) => {
-            acc[tab.id] = true;
-            return acc;
-          }, {} as Record<TabId, boolean>),
-        );
-        setIsSearching(false);
-        setPaywallArmedFor({ tab: activeTabRef.current, token: Date.now() });
-        return;
-      }
     setResults((prevResults) => {
       const next = { ...prevResults } as Record<TabId, any[]>;
       tabConfigs.forEach((tab) => {
@@ -1514,8 +1495,24 @@ export default function Page() {
     );
   }, [query, searchCooldownUntil, setResults]);
 
+  const handleSearch = useCallback(() => {
+    if (searchDebounceRef.current) {
+      window.clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = window.setTimeout(() => {
+      runSearch();
+    }, SEARCH_DEBOUNCE_MS);
+  }, [runSearch]);
+
   useEffect(() => {
-    if (IS_MOCK_SEARCH_MODE) return;
+    return () => {
+      if (searchDebounceRef.current) {
+        window.clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!submittedQuery) return;
     searchAbortRef.current?.abort();
     const controller = new AbortController();
@@ -1786,9 +1783,9 @@ export default function Page() {
         <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                Getnius
-              </h1>
+              <LogoLandingLink
+                textClassName="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent"
+              />
               <nav className="hidden md:flex gap-1">
                 <button className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg transition-colors">
                   New Search
@@ -1798,6 +1795,11 @@ export default function Page() {
                   History
                 </button>
               </nav>
+              {process.env.NODE_ENV !== 'production' && (
+                <span className="px-3 py-1 text-xs font-semibold rounded-full border border-slate-200 bg-slate-50 text-slate-600">
+                  {resolvedSearchMode === 'google' ? 'Google (live)' : 'Mock (demo)'}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button className="p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
@@ -1834,6 +1836,12 @@ export default function Page() {
             resultCounts={resultCounts}
           />
         </div>
+
+        {demoBanner && (
+          <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+            {demoBanner}
+          </div>
+        )}
 
         {quotaError && (
           <div className="px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
