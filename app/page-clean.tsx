@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import { LogoLandingLink } from '@/components/LogoLandingLink';
 import { Search, Upload, Building2, Users, Newspaper, TrendingUp, Filter, Bell, Settings, History, Plus, X, FileText, BookOpen, Info, Bookmark } from 'lucide-react';
 import { DataGridLayout } from '@/components/data-grid-layout';
 
@@ -22,9 +23,9 @@ export default function Page() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Getnius
-              </h1>
+              <LogoLandingLink
+                textClassName="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
+              />
               <nav className="hidden md:flex gap-1">
                 <button className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
                   New Search

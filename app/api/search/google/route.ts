@@ -9,12 +9,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if Google API credentials are configured
-    const apiKey = process.env.GOOGLE_API_KEY
-    const searchEngineId = process.env.GOOGLE_CSE_ID
+    const apiKey = process.env.GOOGLE_CSE_API_KEY
+    const searchEngineId = process.env.GOOGLE_CSE_CX
 
     if (!apiKey || !searchEngineId) {
       return NextResponse.json({
-        error: "Google CSE is not configured. Set GOOGLE_API_KEY and GOOGLE_CSE_ID.",
+        error: "Google CSE is not configured. Set GOOGLE_CSE_API_KEY and GOOGLE_CSE_CX.",
         companies: []
       }, { status: 500 })
     }
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     // Google Custom Search API call
     const searchQuery = `${query} company startup business site:linkedin.com OR site:crunchbase.com OR site:angel.co`
     const googleResponse = await fetch(
-      `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(searchQuery)}&num=10`,
+      `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(searchQuery)}&num=10&fields=items(title,link,snippet,displayLink,pagemap)`,
     )
 
     if (!googleResponse.ok) {

@@ -1,4 +1,4 @@
-import type { GoogleCseItem } from "../googleCse";
+import type { GoogleCseItem } from "../google-search";
 
 export type NormalizedSearchRow = {
   id: string;

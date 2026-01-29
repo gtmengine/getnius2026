@@ -1,5 +1,5 @@
 import type { TabId } from "@/lib/grid-columns";
-import type { GoogleCseItem } from "@/lib/googleCse";
+import type { GoogleCseItem } from "@/lib/google-search";
 import { sampleDataMap } from "@/lib/sample-data";
 
 const toDisplayLink = (value?: string) => {
