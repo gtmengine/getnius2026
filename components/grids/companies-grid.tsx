@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { ColDef } from 'ag-grid-community';
 import { AgGridWrapper } from '@/components/ui/ag-grid-wrapper';
-import { selectCol } from '@/lib/grid-columns';
+import { selectCol, ActionsHeaderComponent } from '@/lib/grid-columns';
 
 interface CompaniesGridProps {
   onRowSelect: (company: any) => void;
@@ -355,8 +355,12 @@ export function CompaniesGrid({ onRowSelect }: CompaniesGridProps) {
     },
     {
       field: 'actions',
-      headerName: 'Actions',
+      headerName: '',
+      headerComponent: ActionsHeaderComponent,
       width: 100,
+      sortable: false,
+      filter: false,
+      suppressMenu: true,
       cellRenderer: (params: any) => (
         <button className="px-3 py-1 text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-100 transition-colors">
           Save

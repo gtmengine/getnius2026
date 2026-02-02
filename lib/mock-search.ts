@@ -134,6 +134,7 @@ export const buildMockRowsForTab = (tab: TabId, count: number, query?: string) =
           ...row,
           id: baseId,
           name: withMockTitle(row.name, index),
+          __mock: true,
         };
       case "people":
         return {
@@ -141,6 +142,7 @@ export const buildMockRowsForTab = (tab: TabId, count: number, query?: string) =
           id: baseId,
           name: withMockTitle(row.name, index),
           email: makeMockEmail(row.email, index),
+          __mock: true,
         };
       case "news":
         return {
@@ -150,6 +152,7 @@ export const buildMockRowsForTab = (tab: TabId, count: number, query?: string) =
           summary: row.summary
             ? `${row.summary} (Mock #${index + 1})`
             : `Mock summary #${index + 1}`,
+          __mock: true,
         };
       case "signals":
         return {
@@ -157,29 +160,34 @@ export const buildMockRowsForTab = (tab: TabId, count: number, query?: string) =
           id: baseId,
           signalType: withMockTitle(row.signalType, index),
           source: makeUniqueLink(row.source ?? "https://example.com/signal", index, query),
+          __mock: true,
         };
       case "market":
         return {
           ...row,
           id: baseId,
           title: withMockTitle(row.title, index),
+          __mock: true,
         };
       case "patents":
         return {
           ...row,
           id: baseId,
           title: withMockTitle(row.title, index),
+          __mock: true,
         };
       case "research-papers":
         return {
           ...row,
           id: baseId,
           title: withMockTitle(row.title, index),
+          __mock: true,
         };
       default:
         return {
           ...row,
           id: baseId,
+          __mock: true,
         };
     }
   });

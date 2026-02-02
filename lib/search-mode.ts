@@ -25,9 +25,8 @@ export function resolveSearchMode(params: {
   envMode?: string | null;
 }): SearchMode {
   const pathname = parseRoute(params.route);
-  const isWelcome = pathname.startsWith("/welcome");
   const envMode = normalizeMode(params.envMode);
-  const mode: SearchMode = isWelcome ? "mock" : envMode ?? "google";
+  const mode: SearchMode = envMode ?? "google";
 
   if (process.env.NODE_ENV !== "production") {
     console.debug(`[search-mode] route=${pathname} mode=${mode}`);

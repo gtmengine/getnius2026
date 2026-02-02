@@ -3,6 +3,29 @@ import { ColDef } from 'ag-grid-community';
 
 export type TabId = 'companies' | 'people' | 'news' | 'signals' | 'market' | 'patents' | 'research-papers';
 
+const isEmptyValue = (value: any) => value === null || value === undefined || value === '';
+
+const formatCellValue = (params: any, fallback = 'N/A') => {
+  const value = params?.value;
+  if (params?.data?.__isNewRow && isEmptyValue(value)) {
+    return '';
+  }
+  if (isEmptyValue(value)) {
+    return fallback;
+  }
+  return value;
+};
+
+const formatCellValueFromData = (value: any, data: any, fallback = 'N/A') => {
+  if (data?.__isNewRow && isEmptyValue(value)) {
+    return '';
+  }
+  if (isEmptyValue(value)) {
+    return fallback;
+  }
+  return value;
+};
+
 export const selectCol = (): ColDef => ({
   headerName: '',
   colId: 'select',
@@ -145,7 +168,10 @@ const DefaultCellRenderer = (params: any) => {
 
 // Status badge renderer
 const StatusRenderer = (params: any) => {
-  const status = params.value || 'N/A';
+  const status = formatCellValue(params);
+  if (status === '') {
+    return null;
+  }
   const colorMap: Record<string, string> = {
     'Active': 'bg-green-100 text-green-700 border-green-200',
     'Inactive': 'bg-gray-100 text-gray-600 border-gray-200',
@@ -168,20 +194,52 @@ const StatusRenderer = (params: any) => {
   return withCellMatchStatus(cellContent, params);
 };
 
+// Actions column header with Add Column button
+export const ActionsHeaderComponent = (props: any) => {
+  const handleAddColumn = (e: React.MouseEvent) => {
+    // Prevent event bubbling to AG Grid's header click handler
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // Call onAddColumn from context
+    if (props.context?.onAddColumn) {
+      props.context.onAddColumn();
+    }
+  };
+
+  return (
+    <div 
+      className="flex items-center justify-center w-full h-full"
+      onClick={(e) => e.stopPropagation()} // Extra protection against bubbling
+    >
+      <button
+        type="button"
+        onClick={handleAddColumn}
+        onMouseDown={(e) => e.stopPropagation()} // Prevent AG Grid from capturing mousedown
+        className="flex items-center justify-center w-6 h-6 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"
+        title="Add Column"
+        aria-label="Add Column"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
+    </div>
+  );
+};
+
 // Action buttons renderer
 const ActionsRenderer = (params: any) => (
-  <div className="flex items-center gap-2">
-    <button
-      type="button"
-      className="px-3 py-1 text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors font-medium"
-      onClick={(event) => {
-        event.stopPropagation();
-        params.context?.onOpenRow?.(params.data);
-      }}
-    >
-      Open
-    </button>
-  </div>
+  <button
+    type="button"
+    className="px-3 py-1 text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-md hover:bg-indigo-100 transition-colors font-medium"
+    onClick={(event) => {
+      event.stopPropagation();
+      params.context?.onOpenRow?.(params.data);
+    }}
+  >
+    Open
+  </button>
 );
 
 // People/News count buttons
@@ -191,6 +249,10 @@ const CountButtonRenderer = (color: 'blue' | 'green' | 'purple') => (params: any
     green: 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100',
     purple: 'bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100',
   };
+  const isBlankNewRow = params.data?.__isNewRow && isEmptyValue(params.value);
+  if (isBlankNewRow) {
+    return null;
+  }
   
   return (
     <button 
@@ -205,19 +267,25 @@ const CountButtonRenderer = (color: 'blue' | 'green' | 'purple') => (params: any
 // Company logo + name renderer
 const CompanyRenderer = (params: any) => {
   const { name, description, logo } = params.data || {};
+  const isNewRow = Boolean(params.data?.__isNewRow);
+  const displayName = formatCellValueFromData(name, params.data);
+  const displayDescription = formatCellValueFromData(description, params.data, '');
+  const showLogo = Boolean(logo) || !isNewRow;
   const cellContent = (
     <div className="flex items-center gap-3 py-1">
-      <img 
-        src={logo || "/placeholder.svg"} 
-        alt={name || ''} 
-        className="w-8 h-8 rounded-md object-cover bg-gray-100" 
-        onError={(e) => {
-          (e.target as HTMLImageElement).src = '/placeholder.svg';
-        }}
-      />
+      {showLogo && (
+        <img 
+          src={logo || "/placeholder.svg"} 
+          alt={displayName || ''} 
+          className="w-8 h-8 rounded-md object-cover bg-gray-100" 
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = '/placeholder.svg';
+          }}
+        />
+      )}
       <div className="min-w-0">
-        <div className="text-sm font-medium text-gray-900 truncate">{name || 'N/A'}</div>
-        <div className="text-xs text-gray-500 truncate max-w-[250px]">{description || ''}</div>
+        <div className="text-sm font-medium text-gray-900 truncate">{displayName}</div>
+        <div className="text-xs text-gray-500 truncate max-w-[250px]">{displayDescription}</div>
       </div>
     </div>
   );
@@ -226,6 +294,10 @@ const CompanyRenderer = (params: any) => {
 
 // Signal type badge
 const SignalTypeRenderer = (params: any) => {
+  const isBlankNewRow = params.data?.__isNewRow && isEmptyValue(params.value);
+  if (isBlankNewRow) {
+    return null;
+  }
   const type = params.value || 'Unknown';
   const typeColors: Record<string, string> = {
     'Funding': 'bg-green-100 text-green-700',
@@ -255,7 +327,8 @@ const SignalTypeRenderer = (params: any) => {
 // Link renderer for URLs
 const LinkRenderer = (params: any) => {
   const url = params.value;
-  if (!url) return <span className="text-gray-400">N/A</span>;
+  const isBlankNewRow = params.data?.__isNewRow && isEmptyValue(url);
+  if (!url) return isBlankNewRow ? null : <span className="text-gray-400">N/A</span>;
   
   return (
     <a 
@@ -275,6 +348,10 @@ const MatchStatusRenderer = (params: any) => {
   const rawStatus = params.value as string | null | undefined;
   // Normalize legacy stored values.
   const normalizedStatus = rawStatus === 'not-match' ? 'not_match' : rawStatus;
+  const isBlankNewRow = params.data?.__isNewRow && isEmptyValue(normalizedStatus);
+  if (isBlankNewRow) {
+    return null;
+  }
 
   if (!normalizedStatus || normalizedStatus === 'suggested') {
     return (
@@ -333,7 +410,7 @@ export const companiesColumnDefs: ColDef[] = [
     width: 150,
     editable: true,
     cellRenderer: DefaultCellRenderer,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'founded',
@@ -341,7 +418,7 @@ export const companiesColumnDefs: ColDef[] = [
     width: 100,
     editable: true,
     cellRenderer: DefaultCellRenderer,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'employees',
@@ -349,7 +426,7 @@ export const companiesColumnDefs: ColDef[] = [
     width: 110,
     editable: true,
     cellRenderer: DefaultCellRenderer,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'status',
@@ -369,7 +446,7 @@ export const companiesColumnDefs: ColDef[] = [
     width: 120,
     editable: true,
     cellRenderer: DefaultCellRenderer,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'people',
@@ -386,10 +463,12 @@ export const companiesColumnDefs: ColDef[] = [
   {
     field: 'actions',
     headerName: '',
+    headerComponent: ActionsHeaderComponent,
     width: 80,
     cellRenderer: ActionsRenderer,
     sortable: false,
     filter: false,
+    suppressMenu: true,
     pinned: 'right',
   },
 ];
@@ -428,7 +507,7 @@ export const peopleColumnDefs: ColDef[] = [
     width: 150,
     editable: true,
     cellRenderer: DefaultCellRenderer,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'email',
@@ -437,7 +516,7 @@ export const peopleColumnDefs: ColDef[] = [
     minWidth: 220,
     editable: true,
     cellRenderer: DefaultCellRenderer,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'matchStatus',
@@ -454,10 +533,12 @@ export const peopleColumnDefs: ColDef[] = [
   {
     field: 'actions',
     headerName: '',
+    headerComponent: ActionsHeaderComponent,
     width: 80,
     cellRenderer: ActionsRenderer,
     sortable: false,
     filter: false,
+    suppressMenu: true,
     pinned: 'right',
   },
 ];
@@ -480,7 +561,7 @@ export const newsColumnDefs: ColDef[] = [
     width: 140,
     editable: true,
     cellRenderer: DefaultCellRenderer,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'date',
@@ -488,7 +569,7 @@ export const newsColumnDefs: ColDef[] = [
     width: 120,
     editable: true,
     cellRenderer: DefaultCellRenderer,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'company',
@@ -496,7 +577,7 @@ export const newsColumnDefs: ColDef[] = [
     width: 160,
     editable: true,
     cellRenderer: DefaultCellRenderer,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'matchStatus',
@@ -511,7 +592,7 @@ export const newsColumnDefs: ColDef[] = [
     minWidth: 300,
     editable: true,
     cellRenderer: DefaultCellRenderer,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'significance_score',
@@ -536,10 +617,12 @@ export const newsColumnDefs: ColDef[] = [
   {
     field: 'actions',
     headerName: '',
+    headerComponent: ActionsHeaderComponent,
     width: 80,
     cellRenderer: ActionsRenderer,
     sortable: false,
     filter: false,
+    suppressMenu: true,
     pinned: 'right',
   },
 ];
@@ -559,7 +642,7 @@ export const signalsColumnDefs: ColDef[] = [
     headerName: 'Person',
     width: 140,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'company',
@@ -573,7 +656,7 @@ export const signalsColumnDefs: ColDef[] = [
     headerName: 'Date',
     width: 120,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'confidence',
@@ -594,15 +677,17 @@ export const signalsColumnDefs: ColDef[] = [
     flex: 2,
     minWidth: 250,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'actions',
     headerName: '',
+    headerComponent: ActionsHeaderComponent,
     width: 80,
     cellRenderer: ActionsRenderer,
     sortable: false,
     filter: false,
+    suppressMenu: true,
     pinned: 'right',
   },
 ];
@@ -623,43 +708,45 @@ export const marketColumnDefs: ColDef[] = [
     headerName: 'Publisher',
     width: 160,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'date',
     headerName: 'Date',
     width: 120,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'region',
     headerName: 'Region',
     width: 140,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'category',
     headerName: 'Category',
     width: 160,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'pages',
     headerName: 'Pages',
     width: 80,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'actions',
     headerName: '',
+    headerComponent: ActionsHeaderComponent,
     width: 80,
     cellRenderer: ActionsRenderer,
     sortable: false,
     filter: false,
+    suppressMenu: true,
     pinned: 'right',
   },
 ];
@@ -691,7 +778,7 @@ export const patentsColumnDefs: ColDef[] = [
     flex: 1,
     minWidth: 160,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'company',
@@ -699,14 +786,14 @@ export const patentsColumnDefs: ColDef[] = [
     flex: 1,
     minWidth: 180,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'dateFiled',
     headerName: 'Date Filed',
     width: 120,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'status',
@@ -717,10 +804,12 @@ export const patentsColumnDefs: ColDef[] = [
   {
     field: 'actions',
     headerName: '',
+    headerComponent: ActionsHeaderComponent,
     width: 80,
     cellRenderer: ActionsRenderer,
     sortable: false,
     filter: false,
+    suppressMenu: true,
     pinned: 'right',
   },
 ];
@@ -742,7 +831,7 @@ export const researchPapersColumnDefs: ColDef[] = [
     flex: 1,
     minWidth: 180,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'journal',
@@ -750,36 +839,38 @@ export const researchPapersColumnDefs: ColDef[] = [
     flex: 1,
     minWidth: 180,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'publicationDate',
     headerName: 'Publication Date',
     width: 140,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'citations',
     headerName: 'Citations',
     width: 100,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'field',
     headerName: 'Field',
     width: 120,
     editable: true,
-    valueFormatter: (params) => params.value || 'N/A',
+    valueFormatter: (params) => formatCellValue(params),
   },
   {
     field: 'actions',
     headerName: '',
+    headerComponent: ActionsHeaderComponent,
     width: 80,
     cellRenderer: ActionsRenderer,
     sortable: false,
     filter: false,
+    suppressMenu: true,
     pinned: 'right',
   },
 ];

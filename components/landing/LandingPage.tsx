@@ -107,23 +107,25 @@ export function LandingPage() {
               />
               <nav className="hidden md:flex gap-1">
                 <Link
-                  href="/"
+                  href="/app"
                   className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg transition-colors"
                 >
                   New Search
                 </Link>
-                <button
-                  type="button"
+                <Link
+                  href="/history"
                   className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2"
-                  aria-disabled="true"
                 >
                   <History className="w-4 h-4" />
                   History
-                </button>
+                </Link>
               </nav>
             </div>
             <div className="flex items-center gap-3">
-              <Link href="/" className="hidden sm:inline-flex">
+              <Link href="/10leads" className="hidden sm:inline-flex">
+                <Button variant="outline">10 Leads</Button>
+              </Link>
+              <Link href="/app" className="hidden sm:inline-flex">
                 <Button variant="outline">Open app</Button>
               </Link>
               <Button onClick={() => setShowDemo(true)}>
@@ -153,7 +155,7 @@ export function LandingPage() {
               <Button size="lg" onClick={() => setShowDemo(true)}>
                 Try the demo
               </Button>
-              <Link href="/">
+              <Link href="/app">
                 <Button size="lg" variant="outline">
                   Open app
                 </Button>

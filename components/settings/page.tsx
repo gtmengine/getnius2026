@@ -9,6 +9,7 @@ import { EmailSearchOptions } from './email-search-options'
 import { VerificationSlider } from './verification-slider'
 import { EnrichmentType } from './enrichment-type'
 import { ModelMarketSidebar } from './model-market-sidebar'
+import { UsageTracker } from './usage-tracker'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
@@ -29,7 +30,7 @@ export default function SettingsPage() {
       <div className="border-b bg-card">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+            <Link href="/app" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
               Back to Search
             </Link>
@@ -86,8 +87,9 @@ export default function SettingsPage() {
             />
           </div>
 
-          {/* Right Sidebar - Model Market */}
-          <div className="w-80">
+          {/* Right Sidebar - Usage & Model Market */}
+          <div className="w-80 space-y-6">
+            <UsageTracker />
             <ModelMarketSidebar />
           </div>
         </div>

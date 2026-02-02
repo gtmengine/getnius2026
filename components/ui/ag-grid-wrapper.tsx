@@ -31,15 +31,22 @@ const customTheme = themeQuartz.withParams({
   rangeSelectionBorderColor: 'rgb(99 102 241)',
 });
 
+export interface HeaderClickInfo {
+  field: string;
+  headerName: string;
+  rect: DOMRect;
+}
+
 export interface AgGridWrapperProps {
   rowData: any[];
   columnDefs: ColDef[];
   onRowClick?: (data: any) => void;
   onOpenRow?: (data: any) => void;
+  onAddColumn?: () => void;
   onSelectionChanged?: (selectedRows: any[]) => void;
   onCellValueChanged?: (event: any) => void;
   onCellClicked?: (event: any) => void;
-  onColumnHeaderDoubleClick?: (columnField: string, currentName: string) => void;
+  onColumnHeaderClick?: (info: HeaderClickInfo) => void;
   className?: string;
   height?: string;
   rowSelection?: { mode: 'singleRow' | 'multiRow'; checkboxes?: boolean; headerCheckbox?: boolean } | false;
@@ -60,10 +67,11 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
   columnDefs,
   onRowClick,
   onOpenRow,
+  onAddColumn,
   onSelectionChanged,
   onCellValueChanged,
   onCellClicked,
-  onColumnHeaderDoubleClick,
+  onColumnHeaderClick,
   className = "",
   height = "60vh",
   rowSelection = { mode: 'multiRow' },
@@ -104,16 +112,28 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
   }, [onCellValueChanged]);
 
   const handleColumnHeaderClicked = useCallback((event: any) => {
-    if (onColumnHeaderDoubleClick && event.column) {
-      // For now, make all header clicks trigger the edit dialog
-      // In a real app, you might want to distinguish between single and double clicks
+    if (onColumnHeaderClick && event.column) {
       const columnField = event.column.getColId();
+      
+      // Skip special columns (actions, select) - these have their own click handlers
+      if (columnField === 'actions' || columnField === 'select') {
+        return;
+      }
+      
       const currentName = event.column.getColDef().headerName || event.column.getColDef().field || '';
-
-      // For now, allow editing all columns for testing
-      onColumnHeaderDoubleClick(columnField, currentName);
+      
+      // Get the header cell element to capture its dimensions
+      const headerElement = event.event?.target?.closest('.ag-header-cell');
+      if (headerElement) {
+        const rect = headerElement.getBoundingClientRect();
+        onColumnHeaderClick({
+          field: columnField,
+          headerName: currentName,
+          rect,
+        });
+      }
     }
-  }, [onColumnHeaderDoubleClick]);
+  }, [onColumnHeaderClick]);
 
   const defaultColDef = useMemo<ColDef>(() => ({
     sortable: true,
@@ -145,7 +165,8 @@ export const AgGridWrapper = forwardRef<AgGridWrapperRef, AgGridWrapperProps>(({
 
   const context = useMemo(() => ({
     onOpenRow,
-  }), [onOpenRow]);
+    onAddColumn,
+  }), [onOpenRow, onAddColumn]);
 
   return (
     <div className={`ag-theme-quartz ${className}`} style={{ height, width: '100%' }}>

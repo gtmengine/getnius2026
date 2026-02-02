@@ -303,6 +303,29 @@ body {
   transition: all 0.15s ease;
 }
 
+/* Fix vertical centering for action cells - reset line-height that causes offset */
+.ag-theme-quartz .ag-cell[col-id="actions"],
+.ag-theme-quartz .ag-cell[col-id="intents"] {
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* Actions column header styling - center the Add Column button */
+.ag-theme-quartz .ag-header-cell[col-id="actions"] {
+  padding: 0;
+}
+
+.ag-theme-quartz .ag-header-cell[col-id="actions"] .ag-header-cell-comp-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
 /* Pinned column shadow */
 .ag-theme-quartz .ag-pinned-left-cols-container {
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
