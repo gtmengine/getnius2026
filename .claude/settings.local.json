@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config:*)",
+      "Bash(gh auth status:*)",
+      "Bash(npx next build)",
+      "Bash(ls -la \"d:\\\\PY_Projects\\\\GETNI.US market research  platform\\\\v8\\\\getnius2026\\\\app\"\" && echo \"---\" && ls -la \"d:PY_ProjectsGETNI.US market research platformv8getnius2026appapp\"\")",
+      "Bash(npm run build:*)",
+      "Bash(npx next dev)",
+      "Bash(if exist .next rd /s /q .next)",
+      "Bash(powershell -Command:*)",
+      "WebFetch(domain:www.stackifier.com)",
+      "Bash(npx next build:*)"
+    ]
+  }
+}
