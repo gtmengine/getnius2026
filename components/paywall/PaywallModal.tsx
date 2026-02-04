@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import type { PaywallPlanId } from './types';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { buildOAuthRedirectUrl } from '@/lib/supabase/redirect';
 
 interface PaywallModalProps {
   open: boolean;
@@ -47,17 +49,40 @@ export function PaywallModal({
 }: PaywallModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<PaywallPlanId>('pro');
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [signInError, setSignInError] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setIsSigningIn(false);
+    setSignInError('');
+  }, [open]);
+
   const handleGoogleSignIn = async () => {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      console.log('TODO: implement Google auth');
+      setSignInError(
+        'Google sign-in is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
+      );
       return;
     }
 
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-    if (error) {
-      console.error('Google sign-in failed', error);
+    try {
+      setIsSigningIn(true);
+      setSignInError('');
+      const returnTo = `${window.location.pathname}${window.location.search}`;
+      const redirectTo = buildOAuthRedirectUrl(returnTo);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: redirectTo ? { redirectTo } : undefined,
+      });
+      if (error) {
+        setSignInError(error.message);
+      }
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -194,7 +219,8 @@ export function PaywallModal({
               type="button"
               onClick={handleGoogleSignIn}
               aria-label="Sign in with Google"
-              className="mt-4 flex h-12 w-full items-center justify-center gap-3 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              disabled={isSigningIn}
+              className="mt-4 flex h-12 w-full items-center justify-center gap-3 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <svg
                 aria-hidden="true"
@@ -219,8 +245,11 @@ export function PaywallModal({
                   fill="#EA4335"
                 />
               </svg>
-              Sign in with Google
+              {isSigningIn ? 'Signing in...' : 'Sign in with Google'}
             </button>
+            {signInError ? (
+              <p className="mt-2 text-xs text-rose-600">{signInError}</p>
+            ) : null}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Choose a plan">
@@ -233,7 +262,10 @@ export function PaywallModal({
                   setSelectedPlan(plan.id);
                   if (plan.id === 'free') {
                     onOpenSubscribe?.();
+                    return;
                   }
+                  router.push('/app/pricing');
+                  onClose();
                 }}
               />
             ))}

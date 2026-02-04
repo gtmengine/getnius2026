@@ -18,6 +18,7 @@
 Update your `.env.local` file with your actual values:
 
 ```env
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
@@ -46,6 +47,10 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 In Supabase Auth settings, add your domain to the Site URL:
 - For development: `http://localhost:3000`
 - For production: `https://yourdomain.com`
+
+Also add these to "Additional Redirect URLs":
+- `http://localhost:3000/auth/callback`
+- `https://yourdomain.com/auth/callback`
 
 ## 7. Test the Authentication
 

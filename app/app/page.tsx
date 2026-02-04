@@ -2444,7 +2444,7 @@ export default function Page() {
           setIsConfigWizardOpen(false);
           setIsSubscribeOpen(true);
         }}
-        searchQuery={submittedQuery}
+        searchQuery={query}
         resultCounts={tabConfigs.reduce((acc, tab) => {
           acc[tab.id] = (rowDataByTab[tab.id] ?? []).length;
           return acc;

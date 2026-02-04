@@ -14,7 +14,6 @@ import {
   Send,
   Mail,
   MessageSquare,
-  Clock,
   ChevronRight,
 } from 'lucide-react';
 
@@ -40,7 +39,6 @@ type EntityId =
   | 'patents'
   | 'research-papers';
 
-type Frequency = 'weekly' | 'monthly' | 'quarterly' | 'on-new-data';
 type Channel = 'telegram' | 'email' | 'slack' | 'discord';
 
 /* ------------------------------------------------------------------ */
@@ -57,18 +55,44 @@ const entityOptions: { id: EntityId; label: string; icon: React.ElementType }[] 
   { id: 'research-papers', label: 'Research Papers', icon: BookOpen },
 ];
 
-const frequencyOptions: { id: Frequency; label: string; description: string }[] = [
-  { id: 'weekly', label: 'Weekly', description: 'Every Monday morning' },
-  { id: 'monthly', label: 'Monthly', description: 'First of each month' },
-  { id: 'quarterly', label: 'Quarterly', description: 'Every 3 months' },
-  { id: 'on-new-data', label: 'On new data', description: 'As soon as we find updates' },
-];
-
-const channelOptions: { id: Channel; label: string; icon: React.ElementType; disabled?: boolean; tag?: string }[] = [
-  { id: 'telegram', label: 'Telegram', icon: Send },
-  { id: 'email', label: 'Email', icon: Mail },
-  { id: 'slack', label: 'Slack', icon: Mail, disabled: true, tag: 'Coming soon' },
-  { id: 'discord', label: 'Discord', icon: MessageSquare, disabled: true, tag: 'Coming soon' },
+const channelOptions: {
+  id: Channel;
+  label: string;
+  description: string;
+  icon: React.ElementType;
+  accent: 'purple' | 'emerald' | 'slate';
+  disabled?: boolean;
+}[] = [
+  {
+    id: 'email',
+    label: 'Email',
+    description: 'Subscribe via Substack',
+    icon: Mail,
+    accent: 'purple',
+  },
+  {
+    id: 'telegram',
+    label: 'Telegram',
+    description: 'Get updates from @Getniusbot',
+    icon: Send,
+    accent: 'emerald',
+  },
+  {
+    id: 'slack',
+    label: 'Slack',
+    description: 'Coming soon',
+    icon: Mail,
+    accent: 'slate',
+    disabled: true,
+  },
+  {
+    id: 'discord',
+    label: 'Discord',
+    description: 'Coming soon',
+    icon: MessageSquare,
+    accent: 'slate',
+    disabled: true,
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -108,8 +132,7 @@ export function ConfigWizardModal({
     if (initial.size === 0) initial.add('companies');
     return initial;
   });
-  const [frequency, setFrequency] = useState<Frequency>('weekly');
-  const [channel, setChannel] = useState<Channel>('telegram');
+  const [channel, setChannel] = useState<Channel>('email');
 
   // Reset selections when query changes
   useEffect(() => {
@@ -290,62 +313,89 @@ export function ConfigWizardModal({
             </div>
           </Section>
 
-          {/* ===== Section 3: Frequency ===== */}
-          <Section number={3} title="How often?">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {frequencyOptions.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setFrequency(opt.id)}
-                  className={`rounded-xl border px-3 py-2.5 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
-                    frequency === opt.id
-                      ? 'border-indigo-300 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-300'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className="block font-medium">{opt.label}</span>
-                  <span className="block text-xs text-slate-400 mt-0.5">{opt.description}</span>
-                </button>
-              ))}
-            </div>
-          </Section>
-
-          {/* ===== Section 4: Channel ===== */}
-          <Section number={4} title="Where to send?">
-            <div className="grid grid-cols-3 gap-2">
+          {/* ===== Section 3: Subscribe ===== */}
+          <Section number={3} title="Subscribe (Daily Updates)">
+            <p className="mb-3 text-sm text-slate-600">
+              Choose how you want to receive notifications.
+            </p>
+            <div className="grid gap-3 sm:gap-4">
               {channelOptions.map((ch) => {
                 const Icon = ch.icon;
                 const selected = channel === ch.id;
+                const isDisabled = !!ch.disabled;
+                const accent =
+                  ch.accent === 'purple'
+                    ? {
+                        selected: 'border-purple-300 bg-purple-50/70 ring-1 ring-purple-200',
+                        hover: 'hover:border-purple-300',
+                        icon: 'bg-purple-100 text-purple-600',
+                        chevron: 'text-slate-400 group-hover:text-purple-500',
+                      }
+                    : ch.accent === 'emerald'
+                      ? {
+                          selected: 'border-emerald-300 bg-emerald-50/70 ring-1 ring-emerald-200',
+                          hover: 'hover:border-emerald-300',
+                          icon: 'bg-emerald-100 text-emerald-600',
+                          chevron: 'text-slate-400 group-hover:text-emerald-500',
+                        }
+                      : {
+                          selected: 'border-slate-300 bg-slate-50 ring-1 ring-slate-200',
+                          hover: 'hover:border-slate-300',
+                          icon: 'bg-slate-100 text-slate-500',
+                          chevron: 'text-slate-400 group-hover:text-slate-500',
+                        };
                 return (
                   <button
                     key={ch.id}
                     type="button"
-                    disabled={ch.disabled}
-                    onClick={() => !ch.disabled && setChannel(ch.id)}
-                    className={`relative rounded-xl border px-3 py-3 text-center text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
-                      ch.disabled
-                        ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-400'
+                    disabled={isDisabled}
+                    onClick={() => !isDisabled && setChannel(ch.id)}
+                    className={`group flex items-center justify-between rounded-2xl border px-5 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+                      isDisabled
+                        ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
                         : selected
-                          ? 'border-indigo-300 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-300'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                          ? accent.selected
+                          : `border-slate-200 bg-slate-50/60 ${accent.hover} hover:bg-white hover:shadow-sm`
                     }`}
                   >
-                    <Icon className={`mx-auto h-5 w-5 ${ch.disabled ? 'text-slate-300' : ''}`} />
-                    <span className="mt-1 block font-medium">{ch.label}</span>
-                    {ch.tag && (
-                      <span className="mt-1 block text-[10px] italic text-slate-400">
-                        {ch.tag}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`flex h-11 w-11 items-center justify-center rounded-full ${
+                          isDisabled ? 'bg-slate-100 text-slate-300' : accent.icon
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p
+                          className={`text-sm font-semibold ${
+                            isDisabled ? 'text-slate-400' : 'text-slate-900'
+                          }`}
+                        >
+                          {ch.label}
+                        </p>
+                        <p
+                          className={`text-sm ${
+                            isDisabled ? 'italic text-slate-400' : 'text-slate-600'
+                          }`}
+                        >
+                          {ch.description}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight
+                      className={`h-5 w-5 transition ${
+                        isDisabled ? 'text-slate-300' : accent.chevron
+                      }`}
+                    />
                   </button>
                 );
               })}
             </div>
           </Section>
 
-          {/* ===== Section 5: Data preview table ===== */}
-          <Section number={5} title="Data preview" noBorder>
+          {/* ===== Section 4: Data preview table ===== */}
+          <Section number={4} title="Data preview" noBorder>
             {miniRows.length > 0 ? (
               <div className="overflow-hidden rounded-xl border border-slate-200">
                 <table className="w-full text-xs">
@@ -396,7 +446,7 @@ export function ConfigWizardModal({
               onClick={onContinue}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
             >
-              Continue
+              Subscribe
               <ChevronRight className="h-4 w-4" />
             </button>
             <button
