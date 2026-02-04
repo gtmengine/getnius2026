@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { Suspense, useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { LogoLandingLink } from '@/components/LogoLandingLink';
@@ -1367,7 +1367,7 @@ function ResultsPanel({
 // ============================================================================
 // Main Page Component
 // ============================================================================
-export default function Page() {
+function PageContent() {
   // State
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
@@ -2465,5 +2465,13 @@ export default function Page() {
         variant="destructive"
       />
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense>
+      <PageContent />
+    </Suspense>
   );
 }
